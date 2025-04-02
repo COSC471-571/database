@@ -1,0 +1,4 @@
+Table: student
+Primary Key: id integer
+Attributes: id integer
+Attributes: name text
