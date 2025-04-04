@@ -1,0 +1,6 @@
+cat
+ssn integer primary key
+fname string
+minit string
+lname string
+ssn integerprimary key

@@ -1,0 +1,6 @@
+cat
+ssn
+fname stirng
+minit string
+lname string
+ssn integer

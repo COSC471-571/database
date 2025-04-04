@@ -1,0 +1,2 @@
+fname               minit               lname               ssn
+"Mary"              "F"                 "Smith"             1234                

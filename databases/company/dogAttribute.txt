@@ -1,0 +1,5 @@
+dog
+ssn integer
+fname stirng
+minit string
+lname string
