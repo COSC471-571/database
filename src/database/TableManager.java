@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TableManager {
-    private static final String DB_ROOT = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases";
+    private static final String DB_ROOT = "databases";
     private String tableName = "";
 
     public static void createTable(DatabaseManager dbManager, String tableName, String[] attributes, String primaryKey) {
