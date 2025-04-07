@@ -1,0 +1,4 @@
+Table: users
+Primary Key: id
+Attributes: id INT
+Attributes: name VARCHAR(100)

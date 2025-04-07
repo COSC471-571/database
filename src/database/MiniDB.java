@@ -5,11 +5,11 @@ import java.util.Scanner;
 public class MiniDB {
 
     public static void main(String[] args) {
-       
+
         Scanner scanner = new Scanner(System.in);
-        
+
         DatabaseManager dbManager = new DatabaseManager();
-        
+
         System.out.println("Welcome to Mini DB. Type EXIT to quit");
         boolean isValid = true;
         while(isValid) {
@@ -38,8 +38,8 @@ public class MiniDB {
                 Parser.parse(command, dbManager);
             }
         }
-      scanner.close();
+        scanner.close();
     }
-   
+
 
 }

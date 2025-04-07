@@ -1,5 +1,0 @@
-employee
-ssn integer primary key
-fname string
-minit string
-lname string

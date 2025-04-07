@@ -1,12 +1,9 @@
 package database;
 
 import java.io.*;
-import java.util.Arrays;
-
-import static database.Parser.bst;
 
 public class TableManager {
-    private static final String DB_ROOT = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases";
+    private static final String DB_ROOT = "databases";
     private String tableName = "";
 
     public static void createTable(DatabaseManager dbManager, String tableName, String[] attributes, String primaryKey) {
@@ -55,7 +52,7 @@ public class TableManager {
                 }
             }
 
-           //creates the file with header
+            //creates the file with header
             try(FileWriter writer = new FileWriter(recordsFile)){
 
                 //write the header with attribute name , aligned in column
@@ -92,8 +89,7 @@ public class TableManager {
         return name.replaceAll("[^a-zA-Z0-9_-]", ""); // Only allow letters, numbers, underscores, and dashes
     }
     //continue here
-    public static boolean checkDataTypeInTable(String tableName, String[] requiredValues, String dbManager){
-        boolean isValid = true;
+    public static boolean checkDataTypeInTable(String tableName, String[] requiredValues, DatabaseManager dbManager){
         int length = requiredValues.length;
         int index = 0;
         String line;
@@ -102,10 +98,16 @@ public class TableManager {
         String[] name = new String[length];
         String primaryString = "";
         String primaryStringValue = "";
-        String path = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases\\"+ dbManager.toLowerCase() + "\\" + tableName.toLowerCase() +"Attribute.txt";
+        File dbFolder = new File(DB_ROOT + File.separator + dbManager.getCurrentDatabase());
+        if (!dbFolder.exists()) {
+            System.out.println("Database directory does not exist.");
+            return false;
+        }
+        File attributeFile = new File(dbFolder, tableName + "Attribute.txt");
+
         try{
             //read from file
-            BufferedReader reader = new BufferedReader(new FileReader(path));
+            BufferedReader reader = new BufferedReader(new FileReader(attributeFile));
             reader.readLine();
             while ((line = reader.readLine()) != null) {
                 if(line.contains("key")){
@@ -172,14 +174,7 @@ public class TableManager {
     }
 
 
-    private static boolean primaryIsValid(String primaryString, String primaryStringValue, String tableName, String dbManager) {
-        //reads and finds primary key record from the file
-        // finds the index that the primary key is located +
-        //if line does not contain values return true;
-        //reads through every line and adds the value at the record index in an array +
-        //compare the saved value in array with the primary index in parameters
-        //if the values are the same -> we can not add it to the file
-        //else continue and add to file
+    private static boolean primaryIsValid(String primaryString, String primaryStringValue, String tableName, DatabaseManager dbManager) {
         String line;
         String[] part;
         String[] values;
@@ -187,15 +182,20 @@ public class TableManager {
         int index = 0;
         String upperLine;
         int count = 0;
-        String path = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases\\"+ dbManager.toLowerCase() + "\\" + tableName.toLowerCase() +"Records.txt";
+        File dbFolder = new File(DB_ROOT + File.separator + dbManager.getCurrentDatabase());
+        if (!dbFolder.exists()) {
+            System.out.println("Database directory does not exist.");
+            return false;
+        }
+        File recordsFile = new File(dbFolder, tableName + "Records.txt");
 
         try {
             //find the index of primary key
-            BufferedReader reader = new BufferedReader(new FileReader(path));
+            BufferedReader reader = new BufferedReader(new FileReader(recordsFile ));
             int value = 0;
             while ((line = reader.readLine()) != null) {
                 if (line.contains(primaryString)) {
-                    upperLine = line.toUpperCase();
+                    upperLine = line.toUpperCase().trim();
                     part = upperLine.split(" ");
                     index = findIndex(part, primaryString);
                 }
@@ -208,7 +208,7 @@ public class TableManager {
 
 
         try{
-            BufferedReader reader = new BufferedReader(new FileReader(path));
+            BufferedReader reader = new BufferedReader(new FileReader(recordsFile ));
             values = new String[count-1];
             count =  0;
             reader.readLine();
@@ -230,7 +230,7 @@ public class TableManager {
                 return false;
             }
         }
-        bst.insert(Integer.parseInt(primaryString), bst.getRecordPointer(primaryString));
+        //bst.insert(Integer.parseInt(primaryString), bst.getRecordPointer(primaryString));
         return true;
     }
     public static int findIndex(String[] arr, String target) {
@@ -275,18 +275,21 @@ public class TableManager {
         }
     }
 
-    public static void writeValues(String tableName, String[] values, String dbManager) {
+    public static void writeValues(String tableName, String[] values, DatabaseManager dbManager) {
         int columnWidth = 20;
-        String path = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases\\"+ dbManager.toLowerCase() + "\\" + tableName.toLowerCase() +"Records.txt";
-
+        File dbFolder = new File(DB_ROOT + File.separator + dbManager.getCurrentDatabase());
+        if (!dbFolder.exists()) {
+            System.out.println("Database directory does not exist.");
+        }
+        File recordsFile = new File(dbFolder, tableName + "Records.txt");
         try{
-            BufferedWriter writer = new BufferedWriter(new FileWriter(path));
-            writer.write("\n");
+            BufferedWriter writer = new BufferedWriter(new FileWriter(recordsFile, true));
             for(String value: values){
                 String[] parts = value.trim().split(" ");
                 String attributeName = parts[0];
                 writer.write(String.format("%-" + columnWidth + "s", attributeName));
             }
+            writer.write("\n");
             writer.close();
         } catch (Exception e) {
             throw new RuntimeException(e);

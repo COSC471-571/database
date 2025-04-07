@@ -3,13 +3,13 @@ package database;
 import java.io.File;
 import java.util.*;
 
-
 public class Parser {
+    private static final String DB_ROOT = "databases";
     static BST bst;
-    
+
     public static void parse(String command, DatabaseManager dbManager) {
-        String[] parts = command.split("\\s+"); 
-        
+        String[] parts = command.split("\\s+");
+
 
         if (parts.length < 2) {
             System.out.println("Invalid command.");
@@ -49,10 +49,10 @@ public class Parser {
                     System.out.print("MiniDB > ");
                     String databaseCommand = scanner.nextLine();
                     parse(databaseCommand, dbManager);
-                    parseInsertValues(command, dbManager.getCurrentDatabase(),tableName);
+                    parseInsertValues(command, dbManager,tableName);
                     scanner.close();
                 }else{
-                    parseInsertValues(command, dbManager.getCurrentDatabase(),tableName);
+                    parseInsertValues(command, dbManager,tableName);
                 }
                 break;
             default:
@@ -60,19 +60,24 @@ public class Parser {
         }
     }
 
-    public static void parseInsertValues(String command, String dbManager, String tableName){
+    public static void parseInsertValues(String command, DatabaseManager dbManager, String tableName){
         int start = command.indexOf("(");
         int end = command.lastIndexOf(")");
         String stringValues = command.substring(start + 1, end).trim();
-        String[] values = stringValues.split(",");//(123, "Mary")
-        String path = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases\\"+ dbManager.toLowerCase() + "\\" + tableName.toLowerCase() +"Attribute.txt";
+        String[] values = stringValues.split(",");
+        File dbFolder = new File(DB_ROOT + File.separator + dbManager.getCurrentDatabase());
+        if (!dbFolder.exists()) {
+            System.out.println("Database directory does not exist.");
+        }
+
+        File attributeFile = new File(dbFolder, tableName + "Attribute.txt");
+        boolean exists = attributeFile.exists();
+
         if (start == -1 || end == -1 || end < start) {
             System.out.println("Syntax Error: Attributes must be enclosed in parentheses.");
             return;
         }
 
-        File file = new File(path);
-        boolean exists = file.exists();
         if(exists){
             boolean result = TableManager.checkDataTypeInTable(tableName, values, dbManager);
             if(result){
@@ -93,7 +98,7 @@ public class Parser {
         int start = command.indexOf("(");
         int end = command.lastIndexOf(")");
         String primaryKey = null;
-        
+
         if (start == -1 || end == -1 || end < start) {
             System.out.println("Syntax Error: Attributes must be enclosed in parentheses.");
             return;

@@ -1,6 +1,12 @@
-employee
-ssn
-fname stirng
-minit string
-lname string
-ssn integer
+Table: EMPLOYEE
+Primary Key: ssn
+Attributes: FNAME string
+Attributes: minit string
+Attributes: LNAME string
+Attributes: ssn integer
+Attributes: bdate string
+Attributes: address string
+Attributes: sex string
+Attributes: salary integer
+Attributes: superssn integer
+Attributes: dno integer

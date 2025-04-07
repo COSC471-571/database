@@ -1,1 +1,1 @@
-fname               minit               lname               ssn                 
+FNAME               minit               LNAME               ssn                 bdate               address             sex                 salary              superssn            dno                 

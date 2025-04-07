@@ -1,12 +1,9 @@
 package database;
 
-
-
-import java.awt.*;
 import java.io.File;
 
 public class DatabaseManager {
-    private static final String DB_ROOT = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases";
+    private static final String DB_ROOT = "databases";
     private String currentDatabase = null;
     private boolean isCreated;
 
@@ -37,12 +34,9 @@ public class DatabaseManager {
         }
         return true;
     }
-
     public void useDatabase(String dbName) {
-
         dbName = dbName.replace(";", "");
         File dbFolder = new File(DB_ROOT + File.separator + dbName);
-
         if (dbFolder.exists() && dbFolder.isDirectory()) {
             currentDatabase = dbName;
             setCreated(true);
