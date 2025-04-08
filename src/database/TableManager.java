@@ -6,6 +6,8 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Collections;
+
 
 import static database.Parser.bst;
 
@@ -377,6 +379,95 @@ public class TableManager {
 
         } catch (IOException e) {
             System.out.println("Error updating records: " + e.getMessage());
+        }
+    }
+    public static void handleDelete(String command, String dbManager) {
+        command = command.replace(";", "").trim();
+        String[] parts = command.split("\\s+");
+        if (parts.length < 2) {
+            System.out.println("Invalid DELETE syntax.");
+            return;
+        }
+
+        String tableName = parts[1].trim();
+        String conditionAttr = null;
+        String conditionVal = null;
+
+        if (command.toUpperCase().contains("WHERE")) {
+            int whereIndex = command.toUpperCase().indexOf("WHERE");
+            String condition = command.substring(whereIndex + 5).trim();
+            String[] condParts = condition.split("=");
+            if (condParts.length == 2) {
+                conditionAttr = condParts[0].trim();
+                conditionVal = condParts[1].trim().replaceAll("\"", "");
+            } else {
+                System.out.println("Invalid WHERE clause.");
+                return;
+            }
+        }
+
+        deleteRecords(tableName, dbManager, conditionAttr, conditionVal);
+    }
+
+    public static void deleteRecords(String tableName, String dbManager, String condAttr, String condVal) {
+        String basePath = "databases" + File.separator + dbManager.toLowerCase() + File.separator;
+        File recordFile = new File(basePath + tableName.toLowerCase() + "Records.txt");
+
+        if (!recordFile.exists()) {
+            System.out.println("Table does not exist.");
+            return;
+        }
+
+        if (condAttr == null || condVal == null) {
+            // Delete entire table
+            recordFile.delete();
+            new File(basePath + tableName.toLowerCase() + "Attribute.txt").delete();
+            new File(basePath + tableName.toLowerCase() + "Index.txt").delete();
+            System.out.println("All records and schema for table " + tableName + " deleted.");
+            return;
+        }
+
+        // Conditional delete
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(recordFile));
+            List<String> lines = new ArrayList<>();
+            String headerLine = reader.readLine();
+            lines.add(headerLine); // always keep the header
+
+            String[] headers = headerLine.trim().split("\\s+");
+            int condIndex = -1;
+            for (int i = 0; i < headers.length; i++) {
+                if (headers[i].equalsIgnoreCase(condAttr)) {
+                    condIndex = i;
+                    break;
+                }
+            }
+
+            if (condIndex == -1) {
+                System.out.println("Attribute " + condAttr + " not found.");
+                return;
+            }
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] values = line.trim().split("\\s+");
+                if (!values[condIndex].equals(condVal)) {
+                    lines.add(line); // keep lines not matching
+                }
+            }
+            reader.close();
+
+            BufferedWriter writer = new BufferedWriter(new FileWriter(recordFile));
+            for (String l : lines) {
+                writer.write(l);
+                writer.newLine();
+            }
+            writer.close();
+
+            System.out.println("Records deleted where " + condAttr + " = " + condVal);
+
+        } catch (IOException e) {
+            System.out.println("Error deleting records: " + e.getMessage());
         }
     }
 

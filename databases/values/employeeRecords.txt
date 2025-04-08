@@ -1,2 +1,1 @@
 fname               minit               lname               ssn                 
-Anna                "F"                 Jones               1234                

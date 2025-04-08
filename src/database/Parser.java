@@ -46,6 +46,7 @@ public class Parser {
             case "UPDATE":
                 TableManager.handleUpdate(command, dbManager.getCurrentDatabase());
                 break;
+           
             case "INSERT":
                 String tableName = "";
                 Scanner scanner = new Scanner(System.in);
@@ -64,6 +65,9 @@ public class Parser {
                 }else{
                     parseInsertValues(command, dbManager.getCurrentDatabase(),tableName);
                 }
+                break;
+            case "DELETE":
+                TableManager.handleDelete(command, dbManager.getCurrentDatabase());
                 break;
             default:
                 System.out.println("Unknown command: " + parts[0]);
