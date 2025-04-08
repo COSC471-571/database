@@ -1,2 +1,2 @@
-fname               minit               lname               ssn
-"Mary"              "F"                 "Smith"             1234                
+fname               minit               lname               ssn                 
+Anna                "F"                 Jones               1234                

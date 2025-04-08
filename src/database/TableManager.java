@@ -1,12 +1,16 @@
 package database;
 
 import java.io.*;
+import java.util.List;
 import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
 import static database.Parser.bst;
 
 public class TableManager {
-    private static final String DB_ROOT = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases";
+    private static final String DB_ROOT = "databases";
     private String tableName = "";
 
     public static void createTable(DatabaseManager dbManager, String tableName, String[] attributes, String primaryKey) {
@@ -102,7 +106,7 @@ public class TableManager {
         String[] name = new String[length];
         String primaryString = "";
         String primaryStringValue = "";
-        String path = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases\\"+ dbManager.toLowerCase() + "\\" + tableName.toLowerCase() +"Attribute.txt";
+        String path = "databases" + File.separator + dbManager + File.separator + tableName.toLowerCase() + "Attribute.txt";
         try{
             //read from file
             BufferedReader reader = new BufferedReader(new FileReader(path));
@@ -187,8 +191,7 @@ public class TableManager {
         int index = 0;
         String upperLine;
         int count = 0;
-        String path = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases\\"+ dbManager.toLowerCase() + "\\" + tableName.toLowerCase() +"Records.txt";
-
+        String path = "databases" + File.separator + dbManager.toLowerCase() + File.separator + tableName.toLowerCase() + "Records.txt";
         try {
             //find the index of primary key
             BufferedReader reader = new BufferedReader(new FileReader(path));
@@ -230,7 +233,10 @@ public class TableManager {
                 return false;
             }
         }
-        bst.insert(Integer.parseInt(primaryString), bst.getRecordPointer(primaryString));
+        if (Parser.bst != null) {
+            Parser.bst.insert(Integer.parseInt(primaryStringValue.trim()), Parser.bst.getRecordPointer(primaryStringValue.trim()));
+        }
+
         return true;
     }
     public static int findIndex(String[] arr, String target) {
@@ -274,22 +280,137 @@ public class TableManager {
             return false;
         }
     }
+    
+    public static void handleUpdate(String command, String dbManager) {
+        command = command.replace(";", "");
+        String[] updateParts = command.split("SET", 2);
+        if (updateParts.length != 2) {
+            System.out.println("Invalid UPDATE syntax.");
+            return;
+        }
+
+        String tableName = updateParts[0].split("\\s+")[1].trim();
+        String setAndWhere = updateParts[1].trim();
+        String[] setParts = setAndWhere.split("WHERE", 2);
+        String setClause = setParts[0].trim();
+
+        Map<String, String> setMap = new HashMap<>();
+        for (String pair : setClause.split(",")) {
+            String[] kv = pair.trim().split("=", 2);
+            if (kv.length == 2) {
+                setMap.put(kv[0].trim(), kv[1].trim().replaceAll("\"", ""));
+            }
+        }
+
+        String conditionAttr = null;
+        String conditionValue = null;
+
+        if (setParts.length == 2) {
+            String[] condParts = setParts[1].trim().split("=", 2);
+            if (condParts.length == 2) {
+                conditionAttr = condParts[0].trim();
+                conditionValue = condParts[1].trim().replaceAll("\"", "");
+            }
+        }
+
+        updateRecords(tableName, dbManager, setMap, conditionAttr, conditionValue);
+    }
+
+    public static void updateRecords(String tableName, String dbManager, Map<String, String> setMap, String condAttr, String condVal) {
+        String path = "databases" + File.separator + dbManager + File.separator + tableName.toLowerCase() + "Records.txt";
+        File file = new File(path);
+        if (!file.exists()) {
+            System.out.println("Table does not exist.");
+            return;
+        }
+
+        try {
+            List<String> lines = new ArrayList<>();
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String headerLine = reader.readLine();
+            lines.add(headerLine);
+
+            String[] headers = headerLine.trim().split("\\s+");
+            int condIndex = -1;
+            if (condAttr != null) {
+                for (int i = 0; i < headers.length; i++) {
+                    if (headers[i].equalsIgnoreCase(condAttr)) {
+                        condIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] values = line.trim().split("\\s+");
+                boolean matches = true;
+
+                if (condAttr != null && condIndex != -1) {
+                    matches = values[condIndex].equals(condVal);
+                }
+
+                if (matches) {
+                    for (int i = 0; i < headers.length; i++) {
+                        if (setMap.containsKey(headers[i])) {
+                            values[i] = setMap.get(headers[i]);
+                        }
+                    }
+                }
+
+                StringBuilder updatedLine = new StringBuilder();
+                for (String v : values) {
+                    updatedLine.append(String.format("%-20s", v));
+                }
+                lines.add(updatedLine.toString());
+            }
+
+            reader.close();
+
+            BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+            for (String updated : lines) {
+                writer.write(updated);
+                writer.newLine();
+            }
+            writer.close();
+            System.out.println("Update successful.");
+
+        } catch (IOException e) {
+            System.out.println("Error updating records: " + e.getMessage());
+        }
+    }
+
+    
+    
+    public static void selectAll(String tableName, String dbManager) {
+        String path = "databases" + File.separator + dbManager.toLowerCase() + File.separator + tableName.toLowerCase() + "Records.txt";
+        
+        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch (IOException e) {
+            System.out.println("Error reading records file: " + e.getMessage());
+        }
+    }
 
     public static void writeValues(String tableName, String[] values, String dbManager) {
         int columnWidth = 20;
-        String path = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases\\"+ dbManager.toLowerCase() + "\\" + tableName.toLowerCase() +"Records.txt";
+        String path = "databases" + File.separator + dbManager.toLowerCase() + File.separator + tableName.toLowerCase() + "Records.txt";
 
         try{
-            BufferedWriter writer = new BufferedWriter(new FileWriter(path));
-            writer.write("\n");
+            BufferedWriter writer = new BufferedWriter(new FileWriter(path,true));
             for(String value: values){
                 String[] parts = value.trim().split(" ");
                 String attributeName = parts[0];
                 writer.write(String.format("%-" + columnWidth + "s", attributeName));
             }
+            writer.write("\n");
             writer.close();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 }
+

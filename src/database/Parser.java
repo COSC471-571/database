@@ -35,6 +35,16 @@ public class Parser {
 
                 break;
             case "SELECT":
+                if (parts.length < 4 || !parts[1].equalsIgnoreCase("*") || !parts[2].equalsIgnoreCase("FROM")) {
+                    System.out.println("Syntax Error: Use SELECT * FROM <tableName>;");
+                    return;
+                }
+                String selectTable = parts[3].replace(";", "");
+                TableManager.selectAll(selectTable, dbManager.getCurrentDatabase());
+                break;
+                
+            case "UPDATE":
+                TableManager.handleUpdate(command, dbManager.getCurrentDatabase());
                 break;
             case "INSERT":
                 String tableName = "";
@@ -65,7 +75,7 @@ public class Parser {
         int end = command.lastIndexOf(")");
         String stringValues = command.substring(start + 1, end).trim();
         String[] values = stringValues.split(",");//(123, "Mary")
-        String path = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases\\"+ dbManager.toLowerCase() + "\\" + tableName.toLowerCase() +"Attribute.txt";
+        String path = "databases" + File.separator + dbManager.toLowerCase() + File.separator + tableName.toLowerCase() + "Attribute.txt";
         if (start == -1 || end == -1 || end < start) {
             System.out.println("Syntax Error: Attributes must be enclosed in parentheses.");
             return;

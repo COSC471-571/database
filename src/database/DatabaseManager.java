@@ -6,7 +6,7 @@ import java.awt.*;
 import java.io.File;
 
 public class DatabaseManager {
-    private static final String DB_ROOT = "C:\\Users\\sweet\\Downloads\\Mini Database\\Mini Database\\databases";
+    private static final String DB_ROOT = "databases";
     private String currentDatabase = null;
     private boolean isCreated;
 
