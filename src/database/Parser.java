@@ -65,6 +65,16 @@ public class Parser {
                     parseInsertValues(command, dbManager.getCurrentDatabase(),tableName);
                 }
                 break;
+    		case "DESCRIBE":
+    			parts[1] = parts[1].replace(";", ""); // Remove semicolon
+    			if (parts.length != 2) {
+    				System.out.println("Syntax Error: only specify ALL or table name after DESCRIBE");
+    			} else if (!parts[1].equals("")) {
+    				dbManager.describeDatabase(parts[1]);
+    			} else {
+    				System.out.println("You must specify ALL or a table name");
+    			}
+    			break;
             default:
                 System.out.println("Unknown command: " + parts[0]);
         }
