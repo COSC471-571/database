@@ -1,6 +1,5 @@
 package database;
 
-import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.Scanner;
@@ -75,6 +74,8 @@ public class DatabaseManager {
 			try {
 				scan = new Scanner(new FileInputStream(dbAtt));
 				System.out.println();
+				line = scan.nextLine();
+				System.out.println(line.toUpperCase());
 				while (scan.hasNext()) {
 					line = scan.nextLine();
 					System.out.println(line);
