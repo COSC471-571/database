@@ -6,10 +6,12 @@ import java.util.*;
 public class Parser {
     private static final String DB_ROOT = "databases";
     static BST bst;
+    //add protected keywords that relate to commands
 
     public static void parse(String command, DatabaseManager dbManager) {
         Scanner scanner = new Scanner(System.in);
         String[] parts = command.split("\\s+");
+
 
         if (parts.length < 2) {
             System.out.println("Invalid command.");
@@ -52,6 +54,7 @@ public class Parser {
                 //find FROM index
                 fromIndex = findFromIndex(parts);
                 //find WHERE index
+
                 whereIndex = findWhereIndex(parts);
                 if (parts.length < 4 || (parts[1].equalsIgnoreCase("*") && parts[fromIndex].equalsIgnoreCase("FROM"))) {
                     //returns results for select * from tablename index;
@@ -74,7 +77,7 @@ public class Parser {
                                 attribute[i - 1] = attribute[i - 1].replace(",", "").trim();
                             }
                         }
-                        TableManager.selectAttributes(selectTable, dbManager, attribute);
+                        TableManager.selectAttribute(selectTable, dbManager, attribute);
                     } else if (parts[fromIndex].equalsIgnoreCase("FROM") && parts[whereIndex].equalsIgnoreCase("WHERE")) {
                         selectTable = parts[fromIndex + 1];
 
@@ -100,11 +103,11 @@ public class Parser {
                         for (int i = start; i <= end; i++) {
                             size++;
                         }
-                        String[] conditions = new String[size];
+                        String[] conditions = new String[size-1];
                         //add conditions to conditions array
                         for (int i = start; i < end; i++) {
                             if (index <= conditions.length) {
-                                conditions[index] = parts[i];
+                                conditions[index] = parts[i].trim().replace(";", "");
                                 conditions[index] = conditions[index].replace("\"", "");
                                 conditions[index] = conditions[index].replace(";", "");
                             }

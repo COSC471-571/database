@@ -1,19 +1,14 @@
 package database;
 
 import java.io.*;
-import java.util.List;
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Collections;
+import java.util.*;
 
-
-import static database.Parser.bst;
+import static java.util.Objects.isNull;
 
 public class TableManager {
     private static final String DB_ROOT = "databases";
     private String tableName = "";
+
 
     public static void createTable(DatabaseManager dbManager, String tableName, String[] attributes, String primaryKey) {
 
@@ -41,15 +36,15 @@ public class TableManager {
         File indexFile = new File(dbFolder, tableName + "Index.txt");
 
 
-        if(attributeFile.exists() || recordsFile.exists() || indexFile.exists()) {
-            System.out.println("Table "+ tableName + " already exists.");
+        if (attributeFile.exists() || recordsFile.exists() || indexFile.exists()) {
+            System.out.println("Table " + tableName + " already exists.");
             return;
         }
 
         try {
             //Create attribute file(schema storage)
-            if(attributeFile.createNewFile()) {
-                try (FileWriter writer = new FileWriter(attributeFile)){
+            if (attributeFile.createNewFile()) {
+                try (FileWriter writer = new FileWriter(attributeFile)) {
                     writer.write(tableName + "\n");
                     //writer.write(primaryKey + " primary key" + "\n");
                     //writer.write("Attributes:\n");
@@ -62,7 +57,7 @@ public class TableManager {
             }
 
             //creates the file with header
-            try(FileWriter writer = new FileWriter(recordsFile)){
+            try (FileWriter writer = new FileWriter(recordsFile)) {
 
                 //write the header with attribute name , aligned in column
                 int columnWidth = 20;
@@ -77,7 +72,7 @@ public class TableManager {
                 writer.write("\n"); // Add a newline after the header
 
                 System.out.println("Records file created with header: " + recordsFile.getName());
-            }catch(IOException e) {
+            } catch (IOException e) {
                 System.out.println("Error writing records file: " + e.getMessage());
             }
 
@@ -98,7 +93,7 @@ public class TableManager {
         return name.replaceAll("[^a-zA-Z0-9_-]", ""); // Only allow letters, numbers, underscores, and dashes
     }
 
-    public static boolean checkDataTypeInTable(String tableName, String[] requiredValues, DatabaseManager dbManager){
+    public static boolean checkDataTypeInTable(String tableName, String[] requiredValues, DatabaseManager dbManager) {
         int length = requiredValues.length;
         int index = 0;
         String line;
@@ -107,20 +102,26 @@ public class TableManager {
         String[] name = new String[length];
         String primaryString = "";
         String primaryStringValue = "";
-        String path = "databases" + File.separator + dbManager + File.separator + tableName.toLowerCase() + "Attribute.txt";
-        try{
+        File dbFolder = new File(DB_ROOT + File.separator + dbManager.getCurrentDatabase());
+        if (!dbFolder.exists()) {
+            System.out.println("Database directory does not exist.");
+            return false;
+        }
+        File attributeFile = new File(dbFolder, tableName + "Attribute.txt");
+
+        try {
             //read from file
-            BufferedReader reader = new BufferedReader(new FileReader(path));
+            BufferedReader reader = new BufferedReader(new FileReader(attributeFile));
             reader.readLine();
             while ((line = reader.readLine()) != null) {
-                if(line.contains("key")){
+                if (line.contains("key")) {
                     String[] primaryPart = line.split(" ");
                     primaryString = primaryPart[0];
                 }
                 String upperLine = line.toUpperCase();
                 part = upperLine.split(" ");
 
-                if(index < length){
+                if (index < length) {
                     name[index] = part[0];
                     dataType[index] = part[1];
                 }
@@ -131,34 +132,34 @@ public class TableManager {
             if (dataType.length != requiredValues.length) {
                 return false;
             }
-            for(int i = 0; i < length; i++){
+            for (int i = 0; i < length; i++) {
                 if (name[i].equalsIgnoreCase(primaryString)) {
                     primaryStringValue = requiredValues[i];
                 }
             }
-            if(primaryIsValid(primaryString, primaryStringValue, tableName, dbManager)){
-                for(int i = 0; i< dataType.length; i++){
-                    String datatype  = dataType[i];
+            if (primaryIsValid(primaryString, primaryStringValue, tableName, dbManager)) {
+                for (int i = 0; i < dataType.length; i++) {
+                    String datatype = dataType[i];
                     String value = requiredValues[i];
 
-                    switch (datatype.toLowerCase()){
+                    switch (datatype.toLowerCase()) {
                         case "integer":
-                            if(!isInteger(value.trim())){
+                            if (!isInteger(value.trim())) {
                                 return false;
                             }
                             break;
                         case "float":
-                            if(!isFloat(value.trim())){
+                            if (!isFloat(value.trim())) {
                                 return false;
                             }
                             break;
                         case "text":
-                            if(!charConstraintCheck(value.trim())){
+                            if (!charConstraintCheck(value.trim())) {
                                 return false;
                             }
                             break;
-                        case"string":
-                            if(!charConstraintCheck(value.trim())){
+                        case "string":
+                            if (!charConstraintCheck(value.trim())) {
                                 return false;
                             }
                             break;
@@ -167,7 +168,7 @@ public class TableManager {
                     }
                 }
                 return true;
-            }else{
+            } else {
                 System.out.println("Duplicate primary keys found. Cannot insert into the table.");
                 return false;
             }
@@ -178,13 +179,6 @@ public class TableManager {
 
 
     private static boolean primaryIsValid(String primaryString, String primaryStringValue, String tableName, DatabaseManager dbManager) {
-        //reads and finds primary key record from the file
-        // finds the index that the primary key is located +
-        //if line does not contain values return true;
-        //reads through every line and adds the value at the record index in an array +
-        //compare the saved value in array with the primary index in parameters
-        //if the values are the same -> we can not add it to the file
-        //else continue and add to file
         String line;
         String[] part;
         String[] values;
@@ -201,7 +195,7 @@ public class TableManager {
 
         try {
             //find the index of primary key
-            BufferedReader reader = new BufferedReader(new FileReader(recordsFile ));
+            BufferedReader reader = new BufferedReader(new FileReader(recordsFile));
             int value = 0;
             while ((line = reader.readLine()) != null) {
                 if (line.contains(primaryString)) {
@@ -217,16 +211,16 @@ public class TableManager {
         }
 
 
-        try{
-            BufferedReader reader = new BufferedReader(new FileReader(recordsFile ));
-            values = new String[count-1];
-            count =  0;
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(recordsFile));
+            values = new String[count - 1];
+            count = 0;
             reader.readLine();
             while ((line = reader.readLine()) != null) {
-                if(count < values.length){
+                if (count < values.length) {
                     upperLine = line.toUpperCase();
                     part = upperLine.split(" ");
-                    values[count] = part[index-1];
+                    values[count] = part[index - 1];
                 }
                 count++;
             }
@@ -235,14 +229,15 @@ public class TableManager {
             throw new RuntimeException(e);
         }
 
-        for(int i = 0; i < values.length; i++){
-            if(values[i].equalsIgnoreCase(primaryStringValue.trim())){
+        for (int i = 0; i < values.length; i++) {
+            if (values[i].equalsIgnoreCase(primaryStringValue.trim())) {
                 return false;
             }
         }
         //bst.insert(Integer.parseInt(primaryString), bst.getRecordPointer(primaryString));
         return true;
     }
+
     public static int findIndex(String[] arr, String target) {
         for (int i = 0; i < arr.length; i++) {
             if (arr[i].toLowerCase().contains(target)) {
@@ -252,13 +247,12 @@ public class TableManager {
         return -1;
     }
 
-    public static boolean isInteger(String integer){
-        try{
+    public static boolean isInteger(String integer) {
+        try {
             int result = Integer.parseInt(integer);
-            if(integerSizeConstraintCheck(result)){
+            if (integerSizeConstraintCheck(result)) {
                 return true;
-            }
-            else{
+            } else {
                 System.out.println("Integer is too large.");
                 return false;
             }
@@ -266,17 +260,19 @@ public class TableManager {
             return false;
         }
     }
-    public static boolean charConstraintCheck(String string){
-        if(string.length() > Math.pow(string.length(), 100)){
+
+    public static boolean charConstraintCheck(String string) {
+        if (string.length() > Math.pow(string.length(), 100)) {
             return false;
         }
         return true;
     }
+
     public static boolean integerSizeConstraintCheck(int value) {
         return value >= Short.MIN_VALUE && value <= Integer.MAX_VALUE;
     }
 
-    public static boolean isFloat(String value){
+    public static boolean isFloat(String value) {
         try {
             Float.parseFloat(value);
             return true;
@@ -292,9 +288,9 @@ public class TableManager {
             System.out.println("Database directory does not exist.");
         }
         File recordsFile = new File(dbFolder, tableName + "Records.txt");
-        try{
+        try {
             BufferedWriter writer = new BufferedWriter(new FileWriter(recordsFile, true));
-            for(String value: values){
+            for (String value : values) {
                 String[] parts = value.trim().split(" ");
                 String attributeName = parts[0];
                 writer.write(String.format("%-" + columnWidth + "s", attributeName));
@@ -305,6 +301,7 @@ public class TableManager {
             throw new RuntimeException(e);
         }
     }
+
     public static void selectAll(String tableName, String dbManager) {
         String path = "databases" + File.separator + dbManager.toLowerCase() + File.separator + tableName.toLowerCase() + "Records.txt";
 
@@ -317,7 +314,8 @@ public class TableManager {
             System.out.println("Error reading records file: " + e.getMessage());
         }
     }
-    public static void selectAttributes(String tableName, DatabaseManager databaseManager, String[] attributes){
+
+    public static void selectAttribute(String tableName, DatabaseManager databaseManager, String[] attributes) {
         String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
         String line;
         StringBuilder attributeList = new StringBuilder();
@@ -325,37 +323,41 @@ public class TableManager {
         String[] split;
         int[] indices;
         StringBuilder lineData;
-        String temp;
+        String temp = "";
+        for (int i = 0; i < attributes.length; i++) {
+            if (attributes[i] == temp) {
+                System.out.println("Invalid selection: duplicate attributes found.");
+                return;
+            }
+            temp = attributes[i];
+        }
         try {
             BufferedReader reader = new BufferedReader(new FileReader(path));
 
             //find the index of the listed attributes
             line = reader.readLine().trim();
-            split = line.split(" ");
+            split = line.split("\\s+");
+            int index = 0;
             indices = new int[attributes.length];
-            for(int i = 0; i < attributes.length; i++){
-                if(line.contains(attributes[i])){
-                    for(int j = 0; j < split.length; j++){
-                        if(split[j].equalsIgnoreCase(attributes[i])){
-                            indices[i] = j;
-                            attributeList.append(String.format("%-" + columnWidth + "s", attributes[i]));
-                            break;
-                        }
+            for (int i = 0; i < attributes.length; i++) {
+                for (int j = 0; j < split.length; j++) {
+                    if (attributes[i].equalsIgnoreCase(split[j])) {
+                        indices[index] = j;
+                        index++;
+                        attributeList.append(String.format("%-" + columnWidth + "s", attributes[i]));
                     }
                 }
             }
             System.out.println(attributeList.toString());
 
-            while((line = reader.readLine()) != null){
+            while ((line = reader.readLine()) != null) {
                 lineData = new StringBuilder();
-                temp = line.replace("\"", "");
-                split = temp.split(" ");
-                for(int i = 0; i < indices.length; i++){
-                    if(indices[i] > 0){
-                        lineData.append(String.format("%-" + columnWidth + "s", split[indices[i]+1]));
+                temp = line.replace("\"", "").trim();
+                split = temp.split("\\s+");
+                for (int i = 0; i < indices.length; i++) {
+                    if (indices[i] >= 0) {
+                        lineData.append(String.format("%-" + columnWidth + "s", split[indices[i]]));
                     }
-                    lineData.append(String.format("%-" + columnWidth + "s", split[indices[i]]));
-
                 }
                 System.out.println(lineData.toString());
             }
@@ -364,81 +366,450 @@ public class TableManager {
             e.printStackTrace();
         }
     }
-    public static void conditionalSelection(String tableName, DatabaseManager databaseManager, String[] attributes, String[] conditions) {
+
+    public static void selectAttributeRow(String tableName, DatabaseManager databaseManager, String[] storedRow, String[] selectedAttributes) {
+        //select and print the rows that satisfy the condition
         String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
         String line;
+        int rowCount = 0;
         StringBuilder attributeList = new StringBuilder();
         int columnWidth = 20;
-        String[] split;
-        int[] indices;
         StringBuilder lineData;
-        String temp;
-        int index = 0;
-        String[] logicalOperator = new String[findSize(conditions)];
+        String[] dbRow;
+        String removedQuotesLine = "";
+
         try {
             BufferedReader reader = new BufferedReader(new FileReader(path));
             //find the index of the listed attributes
             line = reader.readLine().trim();
-            split = line.split(" ");
-            indices = new int[attributes.length];
-            for (int i = 0; i < attributes.length; i++) {
-                if (line.contains(attributes[i])) {
-                    for (int j = 0; j < split.length; j++) {
-                        if (split[j].equalsIgnoreCase(attributes[i])) {
-                            indices[i] = j;
-                            attributeList.append(String.format("%-" + columnWidth + "s", attributes[i]));
-                            break;
-                        }
+            dbRow = line.split("\\s+");
+            int index = 0;
+            int[] indices = new int[selectedAttributes.length];
+
+            for (int i = 0; i < dbRow.length; i++) {
+                for (int j = 0; j < selectedAttributes.length; j++) {
+                    selectedAttributes[j] = selectedAttributes[j].replace(",", "");
+                    if (dbRow[i].equalsIgnoreCase(selectedAttributes[j])) {
+                        indices[index] = i;
+                        index++;
+                        attributeList.append(String.format("%-" + columnWidth + "s", selectedAttributes[j]));
                     }
                 }
-                System.out.println(attributeList.toString());
             }
+            System.out.println(attributeList.toString());
 
-            while((line = reader.readLine()) != null) {
+            while ((line = reader.readLine()) != null) {
                 lineData = new StringBuilder();
-                temp = line.replace("\"", "");
-                split = temp.split(" ");
-                for (int i = 0; i < indices.length; i++) {
-                    if (indices[i] > 0) {
-                        if (isInteger(split[indices [i] + 1])) {//if the attribute at this index is an int
-                            //apply conditional operators here
-                            //add to string builder if all is true
-                            lineData.append(String.format("%-" + columnWidth + "s", split[indices[i] + 1]));
+                removedQuotesLine = line.replace("\"", "").trim();
+                dbRow = removedQuotesLine.split("\\s+");
+                for(int j = 0; j < storedRow.length;j++){
+                    if(rowCount == Integer.parseInt(storedRow[j])){
+                        for(int k = 0; k < indices.length; k++){
+                            lineData.append(String.format("%-" + columnWidth + "s", dbRow[indices[k]]));
                         }
-                        if (isFloat(split[indices[i] + 1])) {
+                        System.out.println(lineData.toString());
+                    }
+                }
 
+                rowCount++;
+            }
+            System.out.println();
+            reader.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-                        }
-                        else {//attribute is a string, find conditional operators in condition array and apply logic
-                            for(int k = 0; k < conditions.length; k++){
-                                if(conditions[i].equalsIgnoreCase("=")){
-                                    if(split[indices[i]+1].equalsIgnoreCase(conditions[i+1])){
-                                        lineData.append(String.format("%-" + columnWidth + "s", split[indices[i]+1]));
-                                    }
-                                }
+    }
+    public static boolean isFull(String[] strings){
+        boolean isFull = true;
+        for (String string : strings) {
+            if (string == null) {
+                isFull = false;
+                break;
+            }
+        }
+        return isFull;
+    }
+    private static void whereClauseAttribute(String tableName, DatabaseManager databaseManager, String[] attributesSelected, String[] relationalOp, String[] attributesFromWhereClause, String[] recordToLocate, String[] andOrArray) {
+        String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
+        String line;
+        StringBuilder attributeList = new StringBuilder();
+        String[] dbRow;
+        int[] indices;
+        int[] headerIndex;
+        String removedQuotes = "";
+        String[] booleanArray = new String[attributesFromWhereClause.length];
+        String[] storedRow = new String[attributesFromWhereClause.length];
+        boolean isValidRow = true;
+        String temp = "";
+        int columnWidth = 20;
+        int numberOfSeletedRows = 0;
+
+        for (int i = 0; i < attributesSelected.length; i++) {
+            if (attributesSelected[i] == temp) {
+                System.out.println("Invalid selection: duplicate attributes found.");
+                return;
+            }
+            temp = attributesSelected[i];
+        }
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(path));
+
+            //find the index of the listed attributes with the attributes array
+            line = reader.readLine().trim();
+            line = line.replace("\"", "").trim();
+            System.out.println(String.format("%-" + columnWidth + "s", line));
+            dbRow = line.split("\\s+");
+            int index = 0;
+            StringBuilder lineData;
+            indices = new int[attributesFromWhereClause.length];
+            for (int j = 0; j < attributesFromWhereClause.length; j++) {
+                for (int i = 0; i < dbRow.length; i++) {
+                    if (attributesFromWhereClause[j].equalsIgnoreCase(dbRow[i])) {
+                        indices[index] = i;
+                        index++;
+                    }
+                }
+            }
+            headerIndex = new int[attributesSelected.length];
+            index = 0;
+            //get the index of the selcted attributes in the header
+            for (int j = 0; j < attributesSelected.length; j++) {
+                attributesSelected[j] = attributesSelected[j].replace(",", "").trim();
+                for (int i = 0; i < dbRow.length; i++) {
+                    if (attributesSelected[j].equalsIgnoreCase(dbRow[i])) {
+                        headerIndex[index] = i;
+                        index++;
+                    }
+                }
+            }
+            System.out.println(attributeList.toString());
+            int rowCount = 0;
+            while ((line = reader.readLine()) != null) {
+                Arrays.fill(booleanArray, null);
+                lineData = new StringBuilder();
+                removedQuotes = line.replace("\"", "").trim();
+                dbRow = removedQuotes.split("\\s+");
+                for (int j = 0; j < indices.length; j++) {
+                    if (relationalOp[j].equalsIgnoreCase("=")) {
+                        if (dbRow[indices[j]].equalsIgnoreCase(recordToLocate[j])) {
+                            booleanArray[j] = "TRUE";
+                        } else {
+                            if(!isFull(booleanArray)){
+                                booleanArray[j] = "FALSE";
+
                             }
                         }
                     }
-                    lineData.append(String.format("%-" + columnWidth + "s", split[indices[i]]));
+                    if(relationalOp[j].equalsIgnoreCase("!=")){
+                        if (!dbRow[indices[j]].equalsIgnoreCase(recordToLocate[j])) {
+                            booleanArray[j] = "TRUE";
+                        } else {
+                            if(!isFull(booleanArray)){
+                                booleanArray[j] = "FALSE";
+                            }
+                        }
+                    }
+                    if(relationalOp[j].equalsIgnoreCase("<")){
+                        if(isInteger(recordToLocate[j]) && isInteger(dbRow[indices[j]])){
+                            if(Integer.parseInt(dbRow[indices[j]]) < Integer.parseInt(recordToLocate[j])){
+                                booleanArray[j] = "TRUE";
+                            }else {
+                                if(!isFull(booleanArray)){
+                                    booleanArray[j] = "FALSE";
+
+                                }
+                            }
+                        }
+                        if(isFloat(recordToLocate[j]) && isFloat(dbRow[indices[j]])){
+                            if(Float.parseFloat(dbRow[indices[j]]) < Float.parseFloat(recordToLocate[j])){
+                                booleanArray[j] = "TRUE";
+                            }else {
+                                if(!isFull(booleanArray)){
+                                    booleanArray[j] = "FALSE";
+
+                                }
+                            }
+                        }
+                        else{
+                            System.out.println("Can not use '<' on strings");
+                            return;
+                        }
+
+                    }
+                    if(relationalOp[j].equalsIgnoreCase(">")){
+                        if(isInteger(recordToLocate[j]) && isInteger(dbRow[indices[j]])){
+                            if(Integer.parseInt(dbRow[indices[j]]) > Integer.parseInt(recordToLocate[j])){
+                                booleanArray[j] = "TRUE";
+                            }else {
+                                if(!isFull(booleanArray)){
+                                    booleanArray[j] = "FALSE";
+
+                                }
+                            }
+                        }
+                        if(isFloat(recordToLocate[j]) && isFloat(dbRow[indices[j]])){
+                            if(Float.parseFloat(dbRow[indices[j]]) > Float.parseFloat(recordToLocate[j])){
+                                booleanArray[j] = "TRUE";
+                            }else {
+                                if(!isFull(booleanArray)){
+                                    booleanArray[j] = "FALSE";
+
+                                }
+                            }
+                        }
+                        else{
+                            System.out.println("Can not use '>' on strings");
+                            return;
+                        }
+
+                    }
+                    if(relationalOp[j].equalsIgnoreCase("<=")){
+                        if(isInteger(recordToLocate[j]) && isInteger(dbRow[indices[j]])){
+                            if(Integer.parseInt(dbRow[indices[j]]) <= Integer.parseInt(recordToLocate[j])){
+                                booleanArray[j] = "TRUE";
+                            }else {
+                                if(!isFull(booleanArray)){
+                                    booleanArray[j] = "FALSE";
+
+                                }
+                            }
+                        }
+                        if(isFloat(recordToLocate[j]) && isFloat(dbRow[indices[j]])){
+                            if(Float.parseFloat(dbRow[indices[j]]) <= Float.parseFloat(recordToLocate[j])){
+                                booleanArray[j] = "TRUE";
+                            }else {
+                                if(!isFull(booleanArray)){
+                                    booleanArray[j] = "FALSE";
+
+                                }
+                            }
+                        }
+                        else{
+                            System.out.println("Can not use '<=' on strings");
+                            return;
+                        }
+
+                    }
+                    if(relationalOp[j].equalsIgnoreCase(">=")){
+                        if(isInteger(recordToLocate[j]) && isInteger(dbRow[indices[j]])){
+                            if(Integer.parseInt(dbRow[indices[j]]) >= Integer.parseInt(recordToLocate[j])){
+                                booleanArray[j] = "TRUE";
+                            }else {
+                                if(!isFull(booleanArray)){
+                                    booleanArray[j] = "FALSE";
+
+                                }
+                            }
+                        }
+                        if(isFloat(recordToLocate[j]) && isFloat(dbRow[indices[j]])){
+                            if(Float.parseFloat(dbRow[indices[j]]) >= Float.parseFloat(recordToLocate[j])){
+                                booleanArray[j] = "TRUE";
+                            }else {
+                                if(!isFull(booleanArray)){
+                                    booleanArray[j] = "FALSE";
+
+                                }
+                            }
+                        }
+                        else{
+                            System.out.println("Can not use '>=' on strings");
+                            return;
+                        }
+
+                    }
                 }
+                if (isValidRow(andOrArray, booleanArray)) {
+                    for(int i = 0; i < headerIndex.length; i++){
+                        lineData.append(String.format("%-" + columnWidth + "s", dbRow[headerIndex[i]]));
+                        //System.out.print(String.format("%-" + columnWidth + "s", dbRow[headerIndex[i]]));
+                    }
+                    System.out.println(lineData.toString());
+                    numberOfSeletedRows++;
+                }
+                rowCount++;
             }
+            if(numberOfSeletedRows == 0){
+                System.out.println("Nothing found");
+            }
+            System.out.println();
+            reader.close();
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-    public static int findSize(String[] string){
+    public static boolean isNull(String[]  strings){
+        if(strings == null || strings.length < 1){
+            return true;
+        }
+        return false;
+    }
+    public void returnHeaderIndex(){
+
+    }
+    public static boolean isValidRow(String[] andOrArray, String[] booleanArray) {
+        boolean isValidRow = false;
+        String temp = "";
+        if (!isNull(andOrArray)) {
+            for (int i = 0; i < andOrArray.length; i++) {
+                for (int j = 0; j < booleanArray.length; j++) {
+                    if (andOrArray[i].equalsIgnoreCase("AND")) {
+                        if (booleanArray[j].equalsIgnoreCase("TRUE") && temp.equalsIgnoreCase("TRUE")) {
+                            isValidRow = true;
+                        } else {
+                            isValidRow = false;
+                        }
+                        temp = booleanArray[j];
+                    }
+                    if (andOrArray[i].equalsIgnoreCase("OR")) {
+                        if (andOrArray.length == 1) {
+                            if (booleanArray[j].toUpperCase().equalsIgnoreCase("TRUE") || temp.equalsIgnoreCase("TRUE")) {
+                                isValidRow = true;
+                            } else {
+                                isValidRow = false;
+                            }
+                            temp = booleanArray[j];
+                        }
+                        if (andOrArray.length > 1 && booleanArray[j + 1] != null) {
+                            if (booleanArray[j].toUpperCase().equalsIgnoreCase("TRUE") || temp.toUpperCase().equalsIgnoreCase("TRUE")) {
+                                isValidRow = true;
+                            } else {
+                                isValidRow = false;
+                            }
+                            temp = booleanArray[j];
+                        }
+                    }
+                }
+            }
+        }
+        else{
+            for (int j = 0; j < booleanArray.length; j++) {
+
+                if (booleanArray[j].toUpperCase().equalsIgnoreCase("TRUE")) {
+                    isValidRow = true;
+                } else {
+                    isValidRow = false;
+                }
+            }
+        }
+        return isValidRow;
+    }
+
+
+    public static void conditionalSelection(String tableName, DatabaseManager databaseManager, String[] attributes, String[] conditions) {
+        String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
+        String line;
+        String[] headerAttributes;
+        int index;
+        DatabaseManager dbManager = databaseManager;
+        String conditionsString = String.join(" ", conditions);
+        String[] andORArray = new String[findSizeOfAndOrArray(conditions)];
+        Boolean containsAnd = false;
+        Boolean containsOr = false;
+        Boolean containsOrAnd = false;
+
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(path));
+            line = reader.readLine().trim();
+            headerAttributes = line.split("\\s+");
+            index = 0;
+            int size = 0;
+            for(int i = 0; i < headerAttributes.length; i++){
+                for(int j = 0; j < conditions.length; j++){
+                    if(headerAttributes[i].equalsIgnoreCase(conditions[j])){
+                        size++;
+                    }
+                }
+            }
+            String[] attributeToCheck = new String[size];
+            String[] recordToLocate = new String[size];
+            String[] relationalOp = new String[size];
+            for(int i = 0; i < conditions.length; i++){
+                for(int j = 0; j < headerAttributes.length; j++){
+                    if(conditions[i].equalsIgnoreCase(headerAttributes[j])){
+                        if(conditions[i+1].equalsIgnoreCase("=")){
+                            relationalOp[index] = conditions[i+1]; //store relational operator
+                            attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                            recordToLocate[index] = conditions[i+2]; //record to locate
+                            index++;
+                        }
+                        if(conditions[i+1].equalsIgnoreCase("!=")){
+                            relationalOp[index] = conditions[i+1]; //store relational operator
+                            attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                            recordToLocate[index] = conditions[i+2]; //record to locate
+                            index++;
+                        }
+                        if(conditions[i+1].equalsIgnoreCase("<")){
+                            relationalOp[index] = conditions[i+1]; //store relational operator
+                            attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                            recordToLocate[index] = conditions[i+2]; //record to locate
+                            index++;
+                        }
+                        if(conditions[i+1].equalsIgnoreCase(">")){
+                            relationalOp[index] = conditions[i+1]; //store relational operator
+                            attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                            recordToLocate[index] = conditions[i+2]; //record to locate
+                            index++;
+                        }
+                        if(conditions[i+1].equalsIgnoreCase("<=")){
+                            relationalOp[index] = conditions[i+1]; //store relational operator
+                            attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                            recordToLocate[index] = conditions[i+2]; //record to locate
+                            index++;
+                        }
+                        if(conditions[i+1].equalsIgnoreCase(">=")){
+                            relationalOp[index] = conditions[i+1]; //store relational operator
+                            attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                            recordToLocate[index] = conditions[i+2]; //record to locate
+                            index++;
+                        }
+                    }
+                }
+
+            }
+            //boolean checker to see if the condition where statement contains and or or
+            if(conditionsString.toUpperCase().contains("AND")){
+                containsAnd = true;
+            }
+            else if(conditionsString.toUpperCase().contains("OR")){
+                containsOr = true;
+            }
+            else if(conditionsString.toUpperCase().contains("AND") && conditionsString.toUpperCase().contains("OR")){
+                containsOrAnd = true;
+            }
+            //if it does contain it we loop through the condition statement and store the and or or
+            if(containsAnd || containsOr || containsOrAnd){
+                index = 0;
+                for(int i = 0; i < conditions.length; i++){
+                    if(conditions[i].equalsIgnoreCase("AND") || conditions[i].equalsIgnoreCase("OR")){
+                        andORArray[index] = conditions[i];
+                        index++;
+                    }
+                }
+            }
+            //pass the selected attributes to compare, the values, and the relational operator and pass to a select method
+            reader.close();
+            whereClauseAttribute(tableName, dbManager, attributes,relationalOp,attributeToCheck,recordToLocate,andORArray);
+
+        } catch (FileNotFoundException e) {
+            System.out.println("No database Selected.");
+            return;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public static int findSizeOfAndOrArray(String[] string){
         int size = 0;
         for(int i = 0; i < string.length; i++){
             if(string[i].equalsIgnoreCase("AND") || string[i].equalsIgnoreCase("OR")){
-                size++;
-            }else{
                 size++;
             }
         }
         return size;
     }
+
     public static void handleDelete(String command, String dbManager) {
         command = command.replace(";", "").trim();
         String[] parts = command.split("\\s+");
@@ -624,6 +995,4 @@ public class TableManager {
 
         updateRecords(tableName, dbManager, setMap, conditionAttr, conditionValue);
     }
-
-
 }
