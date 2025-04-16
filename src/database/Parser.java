@@ -17,14 +17,7 @@ public class Parser {
             System.out.println("Invalid command.");
             return;
         }
-        String temp = command;
-        while (!command.contains(";")) {
-            command = scanner.nextLine().trim();
-            if(command.contains(";")){
-                command = temp + command;
-                continue;
-            }
-        }
+
         switch (parts[0].toUpperCase()) {
             case "CREATE":
                 if (parts[1].equalsIgnoreCase("DATABASE")) {
@@ -54,7 +47,6 @@ public class Parser {
                 //find FROM index
                 fromIndex = findFromIndex(parts);
                 //find WHERE index
-
                 whereIndex = findWhereIndex(parts);
                 if (parts.length < 4 || (parts[1].equalsIgnoreCase("*") && parts[fromIndex].equalsIgnoreCase("FROM"))) {
                     //returns results for select * from tablename index;
@@ -79,43 +71,89 @@ public class Parser {
                         }
                         TableManager.selectAttribute(selectTable, dbManager, attribute);
                     } else if (parts[fromIndex].equalsIgnoreCase("FROM") && parts[whereIndex].equalsIgnoreCase("WHERE")) {
-                        selectTable = parts[fromIndex + 1];
-
-                        //find size of attribute array
-                        start = 1;
-                        end = fromIndex - 1;
                         size = 0;
-                        for (int i = start; i <= end; i++) {
-                            size++;
-                        }
-                        //add attributes from command to attribute array
-                        String[] attribute = new String[size];
-                        for (int i = 1; i < parts[fromIndex - 1].length(); i++) {
-                            if (i <= attribute.length) {
-                                attribute[i - 1] = parts[i];
+                        String tablenamesSelected = "";
+                        for(int i = fromIndex+1; i < parts.length; i++ ){
+                            if(i < whereIndex){
+                                tablenamesSelected += parts[i];
+                                size++;
                             }
                         }
-
-                        //find size of conditional array
-                        start = whereIndex + 1;
-                        end = parts.length;
-                        size = 0;
-                        for (int i = start; i <= end; i++) {
-                            size++;
-                        }
-                        String[] conditions = new String[size-1];
-                        //add conditions to conditions array
-                        for (int i = start; i < end; i++) {
-                            if (index <= conditions.length) {
-                                conditions[index] = parts[i].trim().replace(";", "");
-                                conditions[index] = conditions[index].replace("\"", "");
-                                conditions[index] = conditions[index].replace(";", "");
+                        String[] tableNames = tablenamesSelected.split(",");
+                        index = 0;
+                        if(tableNames.length > 1){
+                            //find size of attribute array
+                            start = 1;
+                            end = fromIndex - 1;
+                            size = 0;
+                            for (int i = start; i <= end; i++) {
+                                size++;
                             }
-                            index++;
+                            //add attributes from select command to attribute array
+                            String[] attribute = new String[size];
+                            for (int i = 1; i < parts[fromIndex].length(); i++) {
+                                if (i < fromIndex) {
+                                    attribute[i - 1] = parts[i];
+                                }
+                            }
+
+                            //find size of conditional array
+                            start = whereIndex + 1;
+                            end = parts.length;
+                            size = 0;
+                            for (int i = start; i <= end; i++) {
+                                size++;
+                            }
+                            String[] conditions = new String[size-1];
+                            //add conditions to conditions array
+                            for (int i = start; i < end; i++) {
+                                if (index <= conditions.length) {
+                                    conditions[index] = parts[i].trim().replace(";", "");
+                                    conditions[index] = conditions[index].replace("\"", "");
+                                    conditions[index] = conditions[index].replace(";", "");
+                                }
+                                index++;
+                            }
+                            TableManager.multipleTableSelection(tableNames, dbManager, attribute, conditions);
+                        }else{
+                            tableNames[0] = parts[fromIndex + 1];
+                            selectTable = tableNames[0];
+
+                            //find size of attribute array
+                            start = 1;
+                            end = fromIndex - 1;
+                            size = 0;
+                            for (int i = start; i <= end; i++) {
+                                size++;
+                            }
+                            //add attributes from command to attribute array
+                            String[] attribute = new String[size];
+                            for (int i = 1; i < parts[fromIndex - 1].length(); i++) {
+                                if (i <= attribute.length) {
+                                    attribute[i - 1] = parts[i];
+                                }
+                            }
+
+                            //find size of conditional array
+                            start = whereIndex + 1;
+                            end = parts.length;
+                            size = 0;
+                            for (int i = start; i <= end; i++) {
+                                size++;
+                            }
+                            String[] conditions = new String[size-1];
+                            //add conditions to conditions array
+                            for (int i = start; i < end; i++) {
+                                if (index <= conditions.length) {
+                                    conditions[index] = parts[i].trim().replace(";", "");
+                                    conditions[index] = conditions[index].replace("\"", "");
+                                    conditions[index] = conditions[index].replace(";", "");
+                                }
+                                index++;
+                            }
+
+                            TableManager.grabInformationFromWhereClause(selectTable, dbManager, attribute, conditions);
                         }
-
-                        TableManager.conditionalSelection(selectTable, dbManager, attribute, conditions);
-
                     }
                 } else {
                     System.out.println("Syntax Error: Use SELECT <AttrNameList> FROM <tableName> WHERE [Condition];");
@@ -125,7 +163,7 @@ public class Parser {
             case "INSERT":
                 String tableName = "";
                 scanner = new Scanner(System.in);
-                tableName = parts[1];
+                tableName = parts[findInsertIndex(parts)+2];
                 if (!isValidStringLength(tableName)) {
                     System.out.println("Table name is too Long");
                     return;
@@ -142,15 +180,8 @@ public class Parser {
                 }
                 break;
             case "DELETE":
-                if(dbManager.getCurrentDatabase() == null){
-                    System.out.println("No Database was selected.");
-                    return;
-                }else{
-                    TableManager.handleDelete(command, dbManager.getCurrentDatabase());
-                }
                 break;
             case "UPDATE":
-                TableManager.handleUpdate(command, dbManager.getCurrentDatabase());
                 break;
             default:
                 System.out.println("Unknown command: " + parts[0]);
@@ -216,13 +247,15 @@ public class Parser {
         }
         for (String attribute : attributes) {
             attribute = attribute.trim();
-            if (attribute.toUpperCase().contains(primaryKey.toUpperCase()) ) {
-                primaryKey = attribute;
-                if(!isValidStringLength(primaryKey)){
-                    System.out.println("Primary Key is too long.");
-                    return;
+            if(!primaryKeyisNull(primaryKey)){
+                if (attribute.toUpperCase().contains(primaryKey.toUpperCase()) ) {
+                    primaryKey = attribute;
+                    if (!isValidStringLength(primaryKey)) {
+                        System.out.println("Primary Key is too long.");
+                        return;
+                    }
+                    cleanedAttributes.add(attribute + " primary key");
                 }
-                cleanedAttributes.add(attribute + " primary key");
             } else {
                 if(!isValidStringLength(attribute)){
                     System.out.println("Attribute name is too long.");
@@ -232,12 +265,14 @@ public class Parser {
             }
         }
 
+        TableManager.createTable(dbManager, tableName, cleanedAttributes.toArray(new String[0]), primaryKey);
+        bst = new BST(tableName, primaryKey);
+    }
+    public static boolean primaryKeyisNull(String primaryKey){
         if (primaryKey == null || primaryKey.isEmpty()) {
-            System.out.println("Primary key missing or invalid.");
-        } else {
-            TableManager.createTable(dbManager, tableName, cleanedAttributes.toArray(new String[0]), primaryKey);
-            bst = new BST(tableName, primaryKey);
+            return true;
         }
+        return false;
     }
     public static boolean isValidStringLength(String string){
         if (string.length() > Math.pow(string.length(), 19)) {
@@ -263,4 +298,14 @@ public class Parser {
         }
         return index;
     }
+    public static int findInsertIndex(String[] command){
+        int index = 0;
+        for(int i = 0; i < command.length; i++){
+            if(command[i].equalsIgnoreCase("INSERT")){
+                index = i;
+            }
+        }
+        return index;
+    }
+
 }

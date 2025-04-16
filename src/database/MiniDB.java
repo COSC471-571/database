@@ -19,16 +19,15 @@ public class MiniDB {
                 System.out.print("MiniDB [" + dbManager.getCurrentDatabase() + "]> ");
             }
 
-            String command = scanner.nextLine().trim();
+            String command = scanner.nextLine();
+            String temp = command.trim();
 
-            /* users has the option of selecting commands
-                create database
-                use dbname
-                create table
-                select
-                Insert
-                exit
-             */
+            while (!command.contains(";")) {
+                command = scanner.nextLine();
+                command = temp + " " + command;
+                temp = command;
+
+            }
 
             if(command.equalsIgnoreCase("EXIT")) {
                 System.out.println("Exiting MiniDB...");

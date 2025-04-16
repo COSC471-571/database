@@ -3,8 +3,6 @@ package database;
 import java.io.*;
 import java.util.*;
 
-import static java.util.Objects.isNull;
-
 public class TableManager {
     private static final String DB_ROOT = "databases";
     private String tableName = "";
@@ -153,12 +151,7 @@ public class TableManager {
                                 return false;
                             }
                             break;
-                        case "text":
-                            if (!charConstraintCheck(value.trim())) {
-                                return false;
-                            }
-                            break;
-                        case "string":
+                        case "text", "string":
                             if (!charConstraintCheck(value.trim())) {
                                 return false;
                             }
@@ -220,7 +213,7 @@ public class TableManager {
                 if (count < values.length) {
                     upperLine = line.toUpperCase();
                     part = upperLine.split(" ");
-                    values[count] = part[index - 1];
+                    values[count] = part[index];
                 }
                 count++;
             }
@@ -367,59 +360,6 @@ public class TableManager {
         }
     }
 
-    public static void selectAttributeRow(String tableName, DatabaseManager databaseManager, String[] storedRow, String[] selectedAttributes) {
-        //select and print the rows that satisfy the condition
-        String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
-        String line;
-        int rowCount = 0;
-        StringBuilder attributeList = new StringBuilder();
-        int columnWidth = 20;
-        StringBuilder lineData;
-        String[] dbRow;
-        String removedQuotesLine = "";
-
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader(path));
-            //find the index of the listed attributes
-            line = reader.readLine().trim();
-            dbRow = line.split("\\s+");
-            int index = 0;
-            int[] indices = new int[selectedAttributes.length];
-
-            for (int i = 0; i < dbRow.length; i++) {
-                for (int j = 0; j < selectedAttributes.length; j++) {
-                    selectedAttributes[j] = selectedAttributes[j].replace(",", "");
-                    if (dbRow[i].equalsIgnoreCase(selectedAttributes[j])) {
-                        indices[index] = i;
-                        index++;
-                        attributeList.append(String.format("%-" + columnWidth + "s", selectedAttributes[j]));
-                    }
-                }
-            }
-            System.out.println(attributeList.toString());
-
-            while ((line = reader.readLine()) != null) {
-                lineData = new StringBuilder();
-                removedQuotesLine = line.replace("\"", "").trim();
-                dbRow = removedQuotesLine.split("\\s+");
-                for(int j = 0; j < storedRow.length;j++){
-                    if(rowCount == Integer.parseInt(storedRow[j])){
-                        for(int k = 0; k < indices.length; k++){
-                            lineData.append(String.format("%-" + columnWidth + "s", dbRow[indices[k]]));
-                        }
-                        System.out.println(lineData.toString());
-                    }
-                }
-
-                rowCount++;
-            }
-            System.out.println();
-            reader.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
     public static boolean isFull(String[] strings){
         boolean isFull = true;
         for (String string : strings) {
@@ -430,7 +370,24 @@ public class TableManager {
         }
         return isFull;
     }
-    private static void whereClauseAttribute(String tableName, DatabaseManager databaseManager, String[] attributesSelected, String[] relationalOp, String[] attributesFromWhereClause, String[] recordToLocate, String[] andOrArray) {
+    public static boolean hasNull(String[][] strings){
+        boolean hasNull = false;
+        for (int i = 0; i < strings.length; i++) {
+            if (strings[i] == null) {
+                hasNull = true;
+                break;
+            }
+            for (int j = 0; j < strings[i].length; j++) {
+                if (strings[i][j] == null) {
+                    hasNull = true;
+                    break;
+                }
+            }
+        }
+        return hasNull;
+    }
+
+    private static void compareRows(String tableName, DatabaseManager databaseManager, String[] attributesSelected, String[] relationalOp, String[] attributesFromWhereClause, String[] recordToLocate, String[] andOrArray) {
         String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
         String line;
         StringBuilder attributeList = new StringBuilder();
@@ -458,7 +415,7 @@ public class TableManager {
             //find the index of the listed attributes with the attributes array
             line = reader.readLine().trim();
             line = line.replace("\"", "").trim();
-            System.out.println(String.format("%-" + columnWidth + "s", line));
+            //System.out.println(String.format("%-" + columnWidth + "s", line));
             dbRow = line.split("\\s+");
             int index = 0;
             StringBuilder lineData;
@@ -473,12 +430,13 @@ public class TableManager {
             }
             headerIndex = new int[attributesSelected.length];
             index = 0;
-            //get the index of the selcted attributes in the header
+            //get the index of the selected attributes in the header
             for (int j = 0; j < attributesSelected.length; j++) {
                 attributesSelected[j] = attributesSelected[j].replace(",", "").trim();
                 for (int i = 0; i < dbRow.length; i++) {
                     if (attributesSelected[j].equalsIgnoreCase(dbRow[i])) {
                         headerIndex[index] = i;
+                        attributeList.append(String.format("%-" + columnWidth + "s", dbRow[headerIndex[index]]));
                         index++;
                     }
                 }
@@ -619,10 +577,13 @@ public class TableManager {
 
                     }
                 }
+                //prints valid row
                 if (isValidRow(andOrArray, booleanArray)) {
+                    index = rowCount;
+                    System.out.print(index + "." );
                     for(int i = 0; i < headerIndex.length; i++){
                         lineData.append(String.format("%-" + columnWidth + "s", dbRow[headerIndex[i]]));
-                        //System.out.print(String.format("%-" + columnWidth + "s", dbRow[headerIndex[i]]));
+
                     }
                     System.out.println(lineData.toString());
                     numberOfSeletedRows++;
@@ -646,9 +607,462 @@ public class TableManager {
         }
         return false;
     }
-    public void returnHeaderIndex(){
+
+    public static void multipleTableSelection(String[] tableNames, DatabaseManager dbManager, String[] attributesFromSelectCommand, String[] conditions) {
+        int size;
+        String[] andORArray = new String[findSizeOfAndOrArray(conditions)];
+        if(checkForDuplicateSelectedAttributes(attributesFromSelectCommand)){
+            System.out.println("Invalid selection: duplicate attributes found.");
+            return;
+        }
+        //loop through each table name and perform each step
+        for(int i = 0; i < tableNames.length; i++) {
+            //find header size
+            String tablename = tableNames[i];
+            size = TableManager.findHeaderSize(dbManager, tablename, conditions);
+            //set size to arrays
+            String[] attributesToCheck = new String[size];
+            String[] valuesFromWhereClause = new String[size];
+            String[] relationalOps = new String[size];
+            //find all header attributes
+            String[] headerAttributes = getHeaderAttributes(dbManager, tablename);
+            //find all conditional attributes
+
+            //locate operators
+            relationalOps = getRelationalOp(conditions, headerAttributes, size);
+            //locate attributes
+            attributesToCheck = getAttributesFromWhereClause(conditions, headerAttributes, size);
+            //locate record/value to test
+            valuesFromWhereClause = getValueFromWhereClause(conditions, headerAttributes, size);
+            //check booleans in the where clause and store results
+            andORArray = andOrBooleanChecker(conditions);
+            //pass arrays and information into new row selector method that checks multiple conditions are true or false
+            //from different tables
+            compareMultipleTableRows(tablename, dbManager, attributesFromSelectCommand, relationalOps, attributesToCheck, valuesFromWhereClause, andORArray);
+        }
+    }
+    public static String[] compareMultipleTableRows(String tableName, DatabaseManager databaseManager, String[] attributesFromSelectCommand, String[] relationalOp, String[] attributesFromWhereClause, String[] valueFromWhereClause, String[] andOrArray){
+        String[] booleanAndRowNumberResult = new String[attributesFromWhereClause.length];
+        //find indexes of attributes from where clause
+        int[]  whereClauseAttributesIndexes = getIndexesOfWhereClauseAttribute(databaseManager, tableName, attributesFromWhereClause);
+        //find select clause attributes indexes
+        int[] selectedAttributesfromSelectClauseIndexes = getSelectedAttributesIndex(attributesFromSelectCommand, databaseManager,tableName);
+        //get valid rows and index
+        String[] rows = getRowsFromTable(whereClauseAttributesIndexes, attributesFromWhereClause, valueFromWhereClause, relationalOp, tableName, databaseManager);
+
+
+
+        return booleanAndRowNumberResult;
+    }
+    public static String[] getRowsFromTable(int[] whereClauseAttributesIndexes, String[] attributesFromWhereClause, String[] valueFromWhereClause, String[] relationalOp, String tableName, DatabaseManager databaseManager){
+        String[] validRows = new String[attributesFromWhereClause.length];
+        String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
+        String line;
+        String[] dbRow;
+        String removedQuotes = "";
+        String[] booleanArray = new String[attributesFromWhereClause.length];
+        int rowCount = 0;
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(path));
+            while ((line = reader.readLine()) != null) {
+                Arrays.fill(booleanArray, null);
+                removedQuotes = line.replace("\"", "").trim();
+                dbRow = removedQuotes.split("\\s+");
+                for (int j = 0; j < whereClauseAttributesIndexes.length; j++) {
+                    if (relationalOp[j].equalsIgnoreCase("=")) {
+                        if (dbRow[whereClauseAttributesIndexes[j]].equalsIgnoreCase(valueFromWhereClause[j])) {
+                            validRows[j] = "TRUE" + " " + rowCount;
+                        }
+                    }
+                    if (relationalOp[j].equalsIgnoreCase("!=")) {
+                        if (!dbRow[whereClauseAttributesIndexes[j]].equalsIgnoreCase(valueFromWhereClause[j])) {
+                            validRows[j] = "TRUE" + " " + rowCount;
+                        }
+                    }
+                    if (relationalOp[j].equalsIgnoreCase("<")) {
+                        if (isInteger(valueFromWhereClause[j]) && isInteger(dbRow[whereClauseAttributesIndexes[j]])) {
+                            if (Integer.parseInt(dbRow[whereClauseAttributesIndexes[j]]) < Integer.parseInt(valueFromWhereClause[j])) {
+                                validRows[j] = "TRUE" + " " + rowCount;
+                            }
+                        }
+                        if (isFloat(valueFromWhereClause[j]) && isFloat(dbRow[whereClauseAttributesIndexes[j]])) {
+                            if (Float.parseFloat(dbRow[whereClauseAttributesIndexes[j]]) < Float.parseFloat(valueFromWhereClause[j])) {
+                                validRows[j] = "TRUE" + " " + rowCount;
+                            }
+                        } else {
+                            System.out.println("Can not use '<' on strings");
+                        }
+
+                    }
+                    if (relationalOp[j].equalsIgnoreCase(">")) {
+                        if (isInteger(valueFromWhereClause[j]) && isInteger(dbRow[whereClauseAttributesIndexes[j]])) {
+                            if (Integer.parseInt(dbRow[whereClauseAttributesIndexes[j]]) > Integer.parseInt(valueFromWhereClause[j])) {
+                                validRows[j] = "TRUE" + " " + rowCount;
+                            }
+                        }
+                        if (isFloat(valueFromWhereClause[j]) && isFloat(dbRow[whereClauseAttributesIndexes[j]])) {
+                            if (Float.parseFloat(dbRow[whereClauseAttributesIndexes[j]]) > Float.parseFloat(valueFromWhereClause[j])) {
+                                validRows[j] = "TRUE" + " " + rowCount;
+                            }
+                        } else {
+                            System.out.println("Can not use '>' on strings");
+                        }
+
+                    }
+                    if (relationalOp[j].equalsIgnoreCase("<=")) {
+                        if (isInteger(valueFromWhereClause[j]) && isInteger(dbRow[whereClauseAttributesIndexes[j]])) {
+                            if (Integer.parseInt(dbRow[whereClauseAttributesIndexes[j]]) <= Integer.parseInt(valueFromWhereClause[j])) {
+                                validRows[j] = "TRUE" + " " + rowCount;
+                            }
+                        }
+                        if (isFloat(valueFromWhereClause[j]) && isFloat(dbRow[whereClauseAttributesIndexes[j]])) {
+                            if (Float.parseFloat(dbRow[whereClauseAttributesIndexes[j]]) <= Float.parseFloat(valueFromWhereClause[j])) {
+                                validRows[j] = "TRUE" + " " + rowCount;
+                            }
+                        } else {
+                            System.out.println("Can not use '<=' on strings");
+                        }
+
+                    }
+                    if (relationalOp[j].equalsIgnoreCase(">=")) {
+                        if (isInteger(valueFromWhereClause[j]) && isInteger(dbRow[whereClauseAttributesIndexes[j]])) {
+                            if (Integer.parseInt(dbRow[whereClauseAttributesIndexes[j]]) >= Integer.parseInt(valueFromWhereClause[j])) {
+                                validRows[j] = "TRUE" + " " + rowCount;
+                            }
+                        }
+                        if (isFloat(valueFromWhereClause[j]) && isFloat(dbRow[whereClauseAttributesIndexes[j]])) {
+                            if (Float.parseFloat(dbRow[whereClauseAttributesIndexes[j]]) >= Float.parseFloat(valueFromWhereClause[j])) {
+                                validRows[j] = "TRUE" + " " + rowCount;
+                            }
+                        } else {
+                            System.out.println("Can not use '>=' on strings");
+                        }
+
+                    }
+                }
+            }
+            for(int i = 0; i < validRows.length; i++){
+                if (!isFull(validRows) || validRows[i] == null) {
+                    validRows[i] = "FALSE";
+                }
+            }
+
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return validRows;
+    }
+
+    public static int[] getIndexesOfWhereClauseAttribute(DatabaseManager databaseManager, String tableName, String[] attributesFromWhereClause){
+        String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
+        String line;
+        String[] dbRow;
+        int[] indices;
+
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(path));
+
+            //find the index of the listed attributes with the attributes array
+            line = reader.readLine().trim();
+            line = line.replace("\"", "").trim();
+            dbRow = line.split("\\s+");
+            int index = 0;
+            indices = new int[attributesFromWhereClause.length];
+            for (int j = 0; j < attributesFromWhereClause.length; j++) {
+                for (int i = 0; i < dbRow.length; i++) {
+                    if (attributesFromWhereClause[j].equalsIgnoreCase(dbRow[i])) {
+                        indices[index] = i;
+                        index++;
+                    }
+                }
+            }
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return indices;
+    }
+    public static boolean checkForDuplicateSelectedAttributes(String[] attributesSelected){
+        String temp = "";
+        for (int i = 0; i < attributesSelected.length; i++) {
+            if (attributesSelected[i] != temp) {
+                return false;
+            }
+            temp = attributesSelected[i];
+        }
+        return true;
+    }
+    public static String[] andOrBooleanChecker(String[] conditions){
+        String conditionsString = String.join(" ", conditions);
+        boolean containsAnd = false;
+        boolean containsOr = false;
+        boolean containsOrAnd = false;
+        int index;
+
+        String[] andORArray = new String[findSizeOfAndOrArray(conditions)];
+        //boolean checker to see if the condition where statement contains and or or
+        if(conditionsString.toUpperCase().contains("AND")){
+            containsAnd = true;
+        }
+        else if(conditionsString.toUpperCase().contains("OR")){
+            containsOr = true;
+        }
+        else if(conditionsString.toUpperCase().contains("AND") && conditionsString.toUpperCase().contains("OR")){
+            containsOrAnd = true;
+        }
+        //if it does contain it we loop through the condition statement and store the and or or
+        if(containsAnd || containsOr || containsOrAnd){
+            index = 0;
+            for(int i = 0; i < conditions.length; i++){
+                if(conditions[i].equalsIgnoreCase("AND") || conditions[i].equalsIgnoreCase("OR")){
+                    andORArray[index] = conditions[i];
+                    index++;
+                }
+            }
+        }
+        return andORArray;
+    }
+    public static String[] getValueFromWhereClause(String[] conditions, String[] headerAttributes, int size){
+        String[] recordToLocate = new String[size];
+        int index = 0;
+        String foundAttribute = "";
+        String[] temp = new String[conditions.length];
+        for(int i = 0; i < conditions.length; i++) {
+            for (int j = 0; j < headerAttributes.length; j++) {
+                if (conditions[i].equalsIgnoreCase(headerAttributes[j])) {
+                    if (conditions[i + 1].equalsIgnoreCase("=")) {
+                        recordToLocate[index] = conditions[i + 2]; //record to locate
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase("!=")) {
+                        recordToLocate[index] = conditions[i + 2]; //record to locate
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase("<")) {
+                        recordToLocate[index] = conditions[i + 2]; //record to locate
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase(">")) {
+                        recordToLocate[index] = conditions[i + 2]; //record to locate
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase("<=")) {
+                        recordToLocate[index] = conditions[i + 2]; //record to locate
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase(">=")) {
+                        recordToLocate[index] = conditions[i + 2]; //record to locate
+                        index++;
+                    }
+                }
+                if(conditions[i].contains("=") || conditions[i].contains("!=") || conditions[i].contains(">")
+                        || conditions[i].contains(">=")|| conditions[i].contains("<")|| conditions[i].contains("<=")){
+                    int number = 0;
+                    if(!isFull(temp)){
+                        temp = cleanedArray(temp[j], conditions[i]);
+                    }
+                    int k;
+                    for(k = 0; k < temp.length; k++){
+                        if(temp[k].toLowerCase().equalsIgnoreCase(headerAttributes[j])){
+                            if(foundAttribute == ""){
+                                foundAttribute = temp[k];
+                                if(k == 0){
+                                    number = 1;
+                                }else if(k == 1){
+                                    number = 2;
+                                }
+                            }
+
+                        }
+                    }
+
+                    if(number == 1){
+                        recordToLocate[index] = temp[1];
+                        index++;
+                    }
+                    if(number == 2){
+                        recordToLocate[index] = temp[0];
+                        index++;
+                    }
+
+
+                }
+            }
+        }
+        return recordToLocate;
+    }
+    public static String[] getAttributesFromWhereClause(String[] conditions, String[] headerAttributes, int size){
+        String[] attributeToCheck = new String[size];
+        int index = 0;
+        String[] temp = new String[conditions.length];
+        for(int i = 0; i < conditions.length; i++) {
+            for (int j = 0; j < headerAttributes.length; j++) {
+                if (conditions[i].equalsIgnoreCase(headerAttributes[j])) {
+                    if (conditions[i + 1].equalsIgnoreCase("=")) {
+                        attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase("!=")) {
+                        attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase("<")) {
+                        attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase(">")) {
+                        attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase("<=")) {
+                        attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase(">=")) {
+                        attributeToCheck[index] = conditions[i]; //store the attributes to compare
+                        index++;
+                    }
+                }
+                if(conditions[i].contains("=") || conditions[i].contains("!=") || conditions[i].contains(">")
+                        || conditions[i].contains(">=")|| conditions[i].contains("<")|| conditions[i].contains("<=")){
+                    if(!isFull(temp)){
+                        temp = cleanedArray(temp[j], conditions[i]);
+                    }
+
+                    for(int k = 0; k < temp.length; k++){
+                        if(temp[k].toLowerCase().equalsIgnoreCase(headerAttributes[j])){
+                            attributeToCheck[index] = temp[k];
+                            index++;
+                        }
+                    }
+                }
+            }
+        }
+        return attributeToCheck;
+    }
+    public static String[] getRelationalOp(String[] conditions, String[] headerAttributes, int size){
+        String relationalOp[] = new String[size];
+        int index = 0;
+        String[] temp = new String[conditions.length];
+        for(int i = 0; i < headerAttributes.length; i++) {
+            for (int j = 0; j < conditions.length; j++) {
+                if (conditions[j].equalsIgnoreCase(headerAttributes[i])) {
+                    if (conditions[j + 1].equalsIgnoreCase("=")) {
+                        relationalOp[index] = conditions[j + 1]; //store relational operator
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase("!=")) {
+                        relationalOp[index] = conditions[i + 1]; //store relational operator
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase("<")) {
+                        relationalOp[index] = conditions[i + 1]; //store relational operator
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase(">")) {
+                        relationalOp[index] = conditions[i + 1]; //store relational operator
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase("<=")) {
+                        relationalOp[index] = conditions[i + 1]; //store relational operator
+                        index++;
+                    }
+                    if (conditions[i + 1].equalsIgnoreCase(">=")) {
+                        relationalOp[index] = conditions[i + 1]; //store relational operator
+                        index++;
+                    }
+                }
+                if(conditions[j].contains("=") || conditions[j].contains("!=") || conditions[j].contains(">")
+                        || conditions[j].contains(">=")|| conditions[j].contains("<")|| conditions[j].contains("<=")){
+                    String[] possibleOperators = {">=", "<=", "!=", ">", "<", "="};
+                    String condition = conditions[j];
+                    String foundOperator = null;
+
+                    for (String op : possibleOperators) {
+                        if (condition.contains(op)) {
+                            foundOperator = op;
+                            break;
+                        }
+                    }
+
+                    if (foundOperator != null) {
+                        for(int k = 0;  k < relationalOp.length; k++){
+                            if(relationalOp[k] == null){
+                                relationalOp[index] = foundOperator;
+                                index++;
+                            }
+                        }
+
+                    }
+
+                }
+            }
+        }
+        return relationalOp;
+    }
+    public static String[] getHeaderAttributes(DatabaseManager databaseManager, String tableName){
+        String[] headerAttributes;
+        String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
+        String line;
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(path));
+            line = reader.readLine().trim();
+            headerAttributes = line.split("\\s+");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return headerAttributes;
+    }
+    public static int findHeaderSize(DatabaseManager databaseManager, String tableName, String[] conditions){
+        String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
+        String line;
+        String[] headerAttributes;
+        int size = 0;
+        DatabaseManager dbManager = databaseManager;
+        String[] temp = new String[conditions.length];
+        String cleaned = "";
+
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(path));
+            line = reader.readLine().trim();
+            headerAttributes = line.split("\\s+");
+            for (int i = 0; i < headerAttributes.length; i++) {
+                for (int j = 0; j < conditions.length; j++) {
+                    if(conditions[j].contains("=") || conditions[j].contains("!=") || conditions[j].contains(">")
+                            || conditions[j].contains(">=")|| conditions[j].contains("<")|| conditions[j].contains("<=")){
+                        if(!isFull(temp)){
+                            temp = cleanedArray(temp[i], conditions[i]);
+                        }
+                        for(int k = 0; k < temp.length; k++){
+                            if(temp[k].toLowerCase().equalsIgnoreCase(headerAttributes[i])){
+                                size++;
+                            }
+                        }
+                    }
+                    if(conditions[j].toLowerCase().equalsIgnoreCase(headerAttributes[i])){
+                        size++;
+                    }
+                }
+            }
+            return size;
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public static String[] cleanedArray(String string, String condition){
+        string = Arrays.toString(condition.split("=" ));
+        String cleaned = string.replaceAll("[\\[\\]]", "").trim();
+        String[] cleanedArray = cleaned.split("\\s*,\\s*");
+        return cleanedArray;
 
     }
+
     public static boolean isValidRow(String[] andOrArray, String[] booleanArray) {
         boolean isValidRow = false;
         String temp = "";
@@ -698,7 +1112,9 @@ public class TableManager {
     }
 
 
-    public static void conditionalSelection(String tableName, DatabaseManager databaseManager, String[] attributes, String[] conditions) {
+
+    public static void grabInformationFromWhereClause(String tableName, DatabaseManager databaseManager, String[] attributes, String[] conditions) {
+        //this method grabs the information from the conditional where clause, like the relationalOp, attributeToCheck, recordToLocate, andORArray
         String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
         String line;
         String[] headerAttributes;
@@ -791,7 +1207,7 @@ public class TableManager {
             }
             //pass the selected attributes to compare, the values, and the relational operator and pass to a select method
             reader.close();
-            whereClauseAttribute(tableName, dbManager, attributes,relationalOp,attributeToCheck,recordToLocate,andORArray);
+            compareRows(tableName, dbManager, attributes, relationalOp, attributeToCheck, recordToLocate, andORArray);
 
         } catch (FileNotFoundException e) {
             System.out.println("No database Selected.");
@@ -810,189 +1226,56 @@ public class TableManager {
         return size;
     }
 
-    public static void handleDelete(String command, String dbManager) {
-        command = command.replace(";", "").trim();
-        String[] parts = command.split("\\s+");
-        if (parts.length < 2) {
-            System.out.println("Invalid DELETE syntax.");
-            return;
-        }
 
-        String tableName = parts[1].trim();
-        String conditionAttr = null;
-        String conditionVal = null;
-
-        if (command.toUpperCase().contains("WHERE")) {
-            int whereIndex = command.toUpperCase().indexOf("WHERE");
-            String condition = command.substring(whereIndex + 5).trim();
-            String[] condParts = condition.split("=");
-            if (condParts.length == 2) {
-                conditionAttr = condParts[0].trim();
-                conditionVal = condParts[1].trim().replaceAll("\"", "");
-            } else {
-                System.out.println("Invalid WHERE clause.");
-                return;
-            }
-        }
-
-        deleteRecords(tableName, dbManager, conditionAttr, conditionVal);
-    }
-    public static void deleteRecords(String tableName, String dbManager, String condAttr, String condVal) {
-        String basePath = "databases" + File.separator + dbManager.toLowerCase() + File.separator;
-        File recordFile = new File(basePath + tableName.toLowerCase() + "Records.txt");
-
-        if (!recordFile.exists()) {
-            System.out.println("Table does not exist.");
-            return;
-        }
-
-        if (condAttr == null || condVal == null) {
-            // Delete entire table
-            recordFile.delete();
-            new File(basePath + tableName.toLowerCase() + "Attribute.txt").delete();
-            new File(basePath + tableName.toLowerCase() + "Index.txt").delete();
-            System.out.println("All records and schema for table " + tableName + " deleted.");
-            return;
-        }
-
-        // Conditional delete
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader(recordFile));
-            List<String> lines = new ArrayList<>();
-            String headerLine = reader.readLine();
-            lines.add(headerLine); // always keep the header
-
-            String[] headers = headerLine.trim().split("\\s+");
-            int condIndex = -1;
-            for (int i = 0; i < headers.length; i++) {
-                if (headers[i].equalsIgnoreCase(condAttr)) {
-                    condIndex = i;
-                    break;
+    public int findSizeOfConditions(DatabaseManager databaseManager, String tableName, String[] conditions) throws IOException {
+        String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
+        int index;
+        String line;
+        String[] headerAttributes;
+        BufferedReader reader = new BufferedReader(new FileReader(path));
+        line = reader.readLine().trim();
+        headerAttributes = line.split("\\s+");
+        index = 0;
+        int size = 0;
+        for(int i = 0; i < headerAttributes.length; i++){
+            for(int j = 0; j < conditions.length; j++){
+                if(headerAttributes[i].equalsIgnoreCase(conditions[j])){
+                    size++;
                 }
             }
-
-            if (condIndex == -1) {
-                System.out.println("Attribute " + condAttr + " not found.");
-                return;
-            }
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] values = line.trim().split("\\s+");
-                if (!values[condIndex].equals(condVal)) {
-                    lines.add(line); // keep lines not matching
-                }
-            }
-            reader.close();
-
-            BufferedWriter writer = new BufferedWriter(new FileWriter(recordFile));
-            for (String l : lines) {
-                writer.write(l);
-                writer.newLine();
-            }
-            writer.close();
-
-            System.out.println("Records deleted where " + condAttr + " = " + condVal);
-
-        } catch (IOException e) {
-            System.out.println("Error deleting records: " + e.getMessage());
         }
+        reader.close();
+        return size;
     }
-    public static void updateRecords(String tableName, String dbManager, Map<String, String> setMap, String condAttr, String condVal) {
-        String path = "databases" + File.separator + dbManager + File.separator + tableName.toLowerCase() + "Records.txt";
-        File file = new File(path);
-        if (!file.exists()) {
-            System.out.println("Table does not exist.");
-            return;
-        }
+    public static int[] getSelectedAttributesIndex(String[] attributesSelected, DatabaseManager databaseManager, String tableName) {
+        String path = "databases" + File.separator + databaseManager.getCurrentDatabase() + File.separator + tableName.toLowerCase() + "Records.txt";
+        String line;
+        String[] dbRow;
+        int[] indices;
 
         try {
-            List<String> lines = new ArrayList<>();
-            BufferedReader reader = new BufferedReader(new FileReader(file));
-            String headerLine = reader.readLine();
-            lines.add(headerLine);
+            BufferedReader reader = new BufferedReader(new FileReader(path));
 
-            String[] headers = headerLine.trim().split("\\s+");
-            int condIndex = -1;
-            if (condAttr != null) {
-                for (int i = 0; i < headers.length; i++) {
-                    if (headers[i].equalsIgnoreCase(condAttr)) {
-                        condIndex = i;
-                        break;
+            line = reader.readLine().trim();
+            line = line.replace("\"", "").trim();
+            dbRow = line.split("\\s+");
+            int index = 0;
+            indices = new int[attributesSelected.length];
+            for (int j = 0; j < attributesSelected.length; j++) {
+                for (int i = 0; i < dbRow.length; i++) {
+                    if (attributesSelected[j].equalsIgnoreCase(dbRow[i])) {
+                        indices[index] = i;
+                        index++;
                     }
                 }
             }
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] values = line.trim().split("\\s+");
-                boolean matches = true;
-
-                if (condAttr != null && condIndex != -1) {
-                    matches = values[condIndex].equals(condVal);
-                }
-
-                if (matches) {
-                    for (int i = 0; i < headers.length; i++) {
-                        if (setMap.containsKey(headers[i])) {
-                            values[i] = setMap.get(headers[i]);
-                        }
-                    }
-                }
-
-                StringBuilder updatedLine = new StringBuilder();
-                for (String v : values) {
-                    updatedLine.append(String.format("%-20s", v));
-                }
-                lines.add(updatedLine.toString());
-            }
-
             reader.close();
-
-            BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-            for (String updated : lines) {
-                writer.write(updated);
-                writer.newLine();
-            }
-            writer.close();
-            System.out.println("Update successful.");
-
+            return indices;
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
         } catch (IOException e) {
-            System.out.println("Error updating records: " + e.getMessage());
-        }
-    }
-    public static void handleUpdate(String command, String dbManager) {
-        command = command.replace(";", "");
-        String[] updateParts = command.split("SET", 2);
-        if (updateParts.length != 2) {
-            System.out.println("Invalid UPDATE syntax.");
-            return;
+            throw new RuntimeException(e);
         }
 
-        String tableName = updateParts[0].split("\\s+")[1].trim();
-        String setAndWhere = updateParts[1].trim();
-        String[] setParts = setAndWhere.split("WHERE", 2);
-        String setClause = setParts[0].trim();
-
-        Map<String, String> setMap = new HashMap<>();
-        for (String pair : setClause.split(",")) {
-            String[] kv = pair.trim().split("=", 2);
-            if (kv.length == 2) {
-                setMap.put(kv[0].trim(), kv[1].trim().replaceAll("\"", ""));
-            }
-        }
-
-        String conditionAttr = null;
-        String conditionValue = null;
-
-        if (setParts.length == 2) {
-            String[] condParts = setParts[1].trim().split("=", 2);
-            if (condParts.length == 2) {
-                conditionAttr = condParts[0].trim();
-                conditionValue = condParts[1].trim().replaceAll("\"", "");
-            }
-        }
-
-        updateRecords(tableName, dbManager, setMap, conditionAttr, conditionValue);
     }
 }
