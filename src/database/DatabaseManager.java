@@ -1,7 +1,12 @@
 package database;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class DatabaseManager {
@@ -38,6 +43,103 @@ public class DatabaseManager {
 		return true;
 	}
 
+	public void renameDatabase(File attFile, File recFile, List<String> attributes) {
+		List<String> lines2Print = readFromAtt(attFile, attributes);
+		if (lines2Print == null)
+			return;
+		outToFile(lines2Print, attFile);
+		lines2Print = readFromRecords(recFile, attributes);
+		outToFile(lines2Print, recFile);
+		System.out.println("Successfully renamed attribute(s)!");
+	}
+
+	public List<String> readFromRecords(File fileName, List<String> attributes) {
+		Scanner scan = null;
+		String line;
+		List<String> lines = new ArrayList<>();
+		try {
+			scan = new Scanner(new FileInputStream(fileName));
+			line = scan.nextLine();
+			line = "";
+			for (int i = 0; i < attributes.size(); i++) {
+				line += attributes.get(i) + "                ";
+			}
+			lines.add(line);
+			while (scan.hasNext()) {
+				line = scan.nextLine();
+				lines.add(line);
+			}
+		} catch (Exception e) {
+			System.out.println("Error " + e);
+		} finally {
+			scan.close();
+		}
+		return lines;
+	}
+
+	public void outToFile(List<String> lines, File fileName) {
+		BufferedWriter writer = null;
+		try {
+			writer = new BufferedWriter(new FileWriter(fileName));
+			for (int i = 0; i < lines.size(); i++) {
+				writer.write(lines.get(i) + "\n");
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				writer.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public List<String> readFromAtt(File fileName, List<String> attributes) {
+
+		Scanner scan = null;
+		Scanner scan2 = null;
+		String line;
+		List<String> lines = new ArrayList<>();
+		int numLinesFile = 0;
+		int numLinesInput = 0;
+		try {
+			scan = new Scanner(new FileInputStream(fileName));
+			scan2 = new Scanner(new FileInputStream(fileName));
+			line = scan.nextLine();
+			while (scan.hasNext()) {
+				line = scan.nextLine();
+				numLinesFile++;
+			}
+			for (String attribute : attributes) {
+				numLinesInput++;
+			}
+			if (numLinesFile != numLinesInput) {
+				System.out.println("Error: incorrect number of attributes given");
+				return null;
+			}
+			line = scan2.nextLine();
+			lines.add(line);
+			String[] fileLine;
+			for (int i = 0; i < numLinesFile; i++) {
+				line = scan2.nextLine();
+				fileLine = line.split(" ");
+				fileLine[0] = attributes.get(i);
+				String combineLine = "";
+				for (int j = 0; j < fileLine.length; j++) {
+					combineLine += fileLine[j] + " ";
+				}
+				lines.add(combineLine);
+			}
+		} catch (Exception e) {
+			System.out.println("Error " + e);
+		} finally {
+			scan.close();
+			scan2.close();
+		}
+		return lines;
+	}
+
 	public void useDatabase(String dbName) {
 
 		dbName = dbName.replace(";", "");
@@ -54,19 +156,21 @@ public class DatabaseManager {
 	}
 
 	public void describeDatabase(String tblName) {
-		File dbAtt = new File(DB_ROOT + File.separator + getCurrentDatabase() + File.separator + tblName + "Attribute.txt");
+		File dbAtt = new File(
+				DB_ROOT + File.separator + getCurrentDatabase() + File.separator + tblName + "Attribute.txt");
 		if (tblName.equalsIgnoreCase("ALL")) {
-			//https://www.tutorialspoint.com/how-to-get-list-of-all-files-folders-from-a-folder-in-java
+			// https://www.tutorialspoint.com/how-to-get-list-of-all-files-folders-from-a-folder-in-java
 			File dirPath = new File(DB_ROOT + File.separator + getCurrentDatabase());
 			File[] allFiles = dirPath.listFiles();
-			for (int i=0; i<allFiles.length; i++) {
+			for (int i = 0; i < allFiles.length; i++) {
 				String fileName = allFiles[i].getName();
-				if(fileName.contains("Attribute.txt") )
-					readFileForDescribe(allFiles[i]);					
+				if (fileName.contains("Attribute.txt"))
+					readFileForDescribe(allFiles[i]);
 			}
 		} else
 			readFileForDescribe(dbAtt);
 	}
+
 	public void readFileForDescribe(File dbAtt) {
 		if (dbAtt.exists() && dbAtt.isFile()) { // https://stackoverflow.com/questions/1816673/how-do-i-check-if-a-file-exists-in-java
 			String line;

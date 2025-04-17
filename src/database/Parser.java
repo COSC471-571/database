@@ -69,11 +69,20 @@ public class Parser {
     			parts[1] = parts[1].replace(";", ""); // Remove semicolon
     			if (parts.length != 2) {
     				System.out.println("Syntax Error: only specify ALL or table name after DESCRIBE");
-    			} else if (!parts[1].equals("")) {
+    			} else 
+    				if (!parts[1].equals("")) {
     				dbManager.describeDatabase(parts[1]);
     			} else {
     				System.out.println("You must specify ALL or a table name");
     			}
+    			break;
+    		case "RENAME":
+    			if(dbManager.getCurrentDatabase() == null) {
+    				System.out.println("Error: You must use a database first.");
+    				break;
+    			}
+    	    	command = command.replace(parts[0], "").trim();
+    			parseRename(command, dbManager);
     			break;
             default:
                 System.out.println("Unknown command: " + parts[0]);
@@ -155,6 +164,52 @@ public class Parser {
             TableManager.createTable(dbManager, tableName, cleanedAttributes.toArray(new String[0]), primaryKey);
             bst = new BST(tableName, primaryKey);
         }
+    }
+    public static void parseRename(String command, DatabaseManager dbManager) {    	
+        int start = command.indexOf("(");
+        int end = command.lastIndexOf(")");
+        boolean flFound = false;
+        File attFile = null;
+        File recFile = null;
+        
+        if (start == -1 || end == -1 || end < start) {
+            System.out.println("Syntax Error: Attributes must be enclosed in parentheses.");
+            return;
+        }
+       String tblName = command.substring(0, start).trim();
+       File dirPath = new File("databases" + File.separator + dbManager.getCurrentDatabase());
+		File[] allFiles = dirPath.listFiles();
+		for (int i=0; i<allFiles.length; i++) {
+			String fileName = allFiles[i].getName();
+			if(fileName.equals(tblName + "Attribute.txt") ) {
+				flFound = true;	
+				attFile = allFiles[i]; //use this to give to database manager
+			}else if(fileName.equals(tblName + "Records.txt")) {
+				recFile = allFiles[i];
+			}
+		}
+		if(flFound == false) {
+			System.out.println("Error: Could not find table: " + tblName + " in database: " + dbManager.getCurrentDatabase());
+			return;
+		}
+		flFound = false;
+        String attributesString = command.substring(start + 1, end).trim();
+        String[] attributes = attributesString.split("[,\\s]+"); //https://docs.vultr.com/java/standard-library/java/lang/String/split
+        List<String> cleanedAttributes = new ArrayList<>();
+
+        for (String attribute : attributes) {
+            attribute = attribute.trim();
+                if(!isValidStringLength(attribute)){
+                    System.out.println("Attribute name is too long.");
+                    return;
+                }
+                cleanedAttributes.add(attribute);
+        }
+        if(cleanedAttributes.get(0)=="") {
+        	System.out.println("Error: you must have at least one attribute to rename");
+        	return;
+        }
+        dbManager.renameDatabase(attFile, recFile, cleanedAttributes);
     }
     public static boolean isValidStringLength(String string){
         if (string.length() > Math.pow(string.length(), 19)) {

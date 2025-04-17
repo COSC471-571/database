@@ -1,5 +1,4 @@
 employee
-fname string
-minit string
-lname string
-ssn integer primary key
+a string
+b string
+c string
